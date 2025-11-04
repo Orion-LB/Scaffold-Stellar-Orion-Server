@@ -7,10 +7,10 @@ const ReviewsSection = () => {
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
+      (entries: IntersectionObserverEntry[]) => {
+        entries.forEach((entry: IntersectionObserverEntry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('animate-fade-in-up');
+            (entry.target as HTMLElement).classList.add('animate-fade-in-up');
           }
         });
       },
@@ -68,14 +68,14 @@ const ReviewsSection = () => {
         <div className="grid md:grid-cols-3 gap-8">
           {reviews.map((review, index) => (
             <div
-              key={index}
+              key={`review-${index}`}
               data-scroll-reveal
               className="bg-card rounded-2xl p-8 card-shadow opacity-0"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               <div className="flex gap-1 mb-4">
-                {[...Array(review.rating)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 fill-primary text-primary" />
+                {Array.from({ length: review.rating }, (_, i) => (
+                  <Star key={`star-${index}-${i}`} className="w-5 h-5 fill-primary text-primary" />
                 ))}
               </div>
               <p className="font-inter text-base text-foreground/90 mb-6 leading-relaxed">

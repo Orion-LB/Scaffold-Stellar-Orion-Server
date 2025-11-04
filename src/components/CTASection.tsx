@@ -1,17 +1,16 @@
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import cloudImage from "@/assets/cloud.png";
-import unlockImage from "@/assets/unlock.png";
 
 const CTASection = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
+      (entries: IntersectionObserverEntry[]) => {
+        entries.forEach((entry: IntersectionObserverEntry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('animate-fade-in-up');
+            (entry.target as HTMLElement).classList.add('animate-fade-in-up');
           }
         });
       },
@@ -124,7 +123,7 @@ const CTASection = () => {
                     <div className="absolute bottom-0 left-0 w-full flex items-end gap-1">
                       {[0.3, 0.7, 0.4, 0.8, 0.6, 0.9, 1.0, 0.5, 0.7, 0.4, 0.6, 0.8].map((height, i) => (
                         <div 
-                          key={i} 
+                          key={`chart-bar-${i}`} 
                           className={`flex-1 rounded-t ${i === 6 ? 'bg-purple-500' : 'bg-gray-200'}`}
                           style={{ height: `${height * 100}%` }}
                         />

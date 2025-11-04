@@ -7,10 +7,10 @@ const IntegrationsSection = () => {
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
+      (entries: IntersectionObserverEntry[]) => {
+        entries.forEach((entry: IntersectionObserverEntry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('animate-fade-in-up');
+            (entry.target as HTMLElement).classList.add('animate-fade-in-up');
           }
         });
       },
@@ -23,14 +23,6 @@ const IntegrationsSection = () => {
     return () => observer.disconnect();
   }, []);
 
-  const techIcons = [
-    { name: "Google", logo: "🔍" },
-    { name: "Slack", logo: "💬" },
-    { name: "GitHub", logo: "🐙" },
-    { name: "Discord", logo: "🎮" },
-    { name: "Notion", logo: "📝" },
-    { name: "Figma", logo: "🎨" }
-  ];
 
   const features = [
     "Seamless Automation",

@@ -11,10 +11,10 @@ const FAQSection = () => {
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
+      (entries: IntersectionObserverEntry[]) => {
+        entries.forEach((entry: IntersectionObserverEntry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('animate-fade-in-up');
+            (entry.target as HTMLElement).classList.add('animate-fade-in-up');
           }
         });
       },
@@ -78,7 +78,7 @@ const FAQSection = () => {
             <Accordion type="single" collapsible className="space-y-4">
               {faqs.map((faq, index) => (
                 <AccordionItem 
-                  key={index} 
+                  key={`faq-${index}`} 
                   value={`item-${index}`}
                   className="bg-white/80 backdrop-blur-sm rounded-2xl px-6 border-0"
                   style={{

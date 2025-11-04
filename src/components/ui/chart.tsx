@@ -20,7 +20,7 @@ type ChartContextProps = {
 const ChartContext = React.createContext<ChartContextProps | null>(null);
 
 function useChart() {
-  const context = React.useContext(ChartContext);
+  const context = React.use(ChartContext);
 
   if (!context) {
     throw new Error("useChart must be used within a <ChartContainer />");
@@ -29,18 +29,15 @@ function useChart() {
   return context;
 }
 
-const ChartContainer = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentProps<"div"> & {
+const ChartContainer = ({ ref, id, className, children, config, ...props }: React.ComponentProps<"div"> & {
     config: ChartConfig;
     children: React.ComponentProps<typeof RechartsPrimitive.ResponsiveContainer>["children"];
-  }
->(({ id, className, children, config, ...props }, ref) => {
+  } & { ref?: React.RefObject<HTMLDivElement | null> }) => {
   const uniqueId = React.useId();
   const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`;
 
   return (
-    <ChartContext.Provider value={{ config }}>
+    <ChartContext value={{ config }}>
       <div
         data-chart={chartId}
         ref={ref}
@@ -53,9 +50,9 @@ const ChartContainer = React.forwardRef<
         <ChartStyle id={chartId} config={config} />
         <RechartsPrimitive.ResponsiveContainer>{children}</RechartsPrimitive.ResponsiveContainer>
       </div>
-    </ChartContext.Provider>
+    </ChartContext>
   );
-});
+};
 ChartContainer.displayName = "Chart";
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
@@ -89,9 +86,8 @@ ${colorConfig
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
 
-const ChartTooltipContent = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
+const ChartTooltipContent = (
+    { ref, active, payload, className, indicator = "dot", hideLabel = false, hideIndicator = false, label, labelFormatter, labelClassName, formatter, color, nameKey, labelKey }: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
     React.ComponentProps<"div"> & {
       hideLabel?: boolean;
       hideIndicator?: boolean;
@@ -105,25 +101,7 @@ const ChartTooltipContent = React.forwardRef<
       labelClassName?: string;
       formatter?: any;
       color?: string;
-    }
->(
-  (
-    {
-      active,
-      payload,
-      className,
-      indicator = "dot",
-      hideLabel = false,
-      hideIndicator = false,
-      label,
-      labelFormatter,
-      labelClassName,
-      formatter,
-      color,
-      nameKey,
-      labelKey,
-    },
-    ref,
+    } & { ref?: React.RefObject<HTMLDivElement | null> },
   ) => {
     const { config } = useChart();
 
@@ -137,7 +115,7 @@ const ChartTooltipContent = React.forwardRef<
       const itemConfig = getPayloadConfigFromPayload(config, item, key);
       const value =
         !labelKey && typeof label === "string"
-          ? config[label as keyof typeof config]?.label || label
+          ? config[label]?.label || label
           : itemConfig?.label;
 
       if (labelFormatter) {
@@ -228,21 +206,17 @@ const ChartTooltipContent = React.forwardRef<
         </div>
       </div>
     );
-  },
-);
+  };
 ChartTooltipContent.displayName = "ChartTooltip";
 
 const ChartLegend = RechartsPrimitive.Legend;
 
-const ChartLegendContent = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentProps<"div"> & {
+const ChartLegendContent = ({ ref, className, hideIcon = false, payload, verticalAlign = "bottom", nameKey }: React.ComponentProps<"div"> & {
     payload?: any[];
     verticalAlign?: "top" | "middle" | "bottom";
     hideIcon?: boolean;
     nameKey?: string;
-  }
->(({ className, hideIcon = false, payload, verticalAlign = "bottom", nameKey }, ref) => {
+  } & { ref?: React.RefObject<HTMLDivElement | null> }) => {
   const { config } = useChart();
 
   if (!payload?.length) {
@@ -279,7 +253,7 @@ const ChartLegendContent = React.forwardRef<
       })}
     </div>
   );
-});
+};
 ChartLegendContent.displayName = "ChartLegend";
 
 // Helper to extract item config from a payload.
@@ -305,7 +279,7 @@ function getPayloadConfigFromPayload(config: ChartConfig, payload: unknown, key:
     configLabelKey = payloadPayload[key as keyof typeof payloadPayload] as string;
   }
 
-  return configLabelKey in config ? config[configLabelKey] : config[key as keyof typeof config];
+  return configLabelKey in config ? config[configLabelKey] : config[key];
 }
 
 export { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartStyle };

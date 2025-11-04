@@ -6,10 +6,10 @@ const FeaturesSection = () => {
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
+      (entries: IntersectionObserverEntry[]) => {
+        entries.forEach((entry: IntersectionObserverEntry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('animate-fade-in-up');
+            (entry.target as HTMLElement).classList.add('animate-fade-in-up');
           }
         });
       },
@@ -70,7 +70,7 @@ const FeaturesSection = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
             <div
-              key={index}
+              key={`feature-${index}`}
               data-scroll-reveal
               className="bg-card rounded-2xl p-8 card-shadow hover:shadow-lg transition-shadow opacity-0"
               style={{ animationDelay: `${index * 0.1}s` }}

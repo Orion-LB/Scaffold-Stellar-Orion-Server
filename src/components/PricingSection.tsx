@@ -9,10 +9,10 @@ const PricingSection = () => {
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
+      (entries: IntersectionObserverEntry[]) => {
+        entries.forEach((entry: IntersectionObserverEntry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('animate-fade-in-up');
+            (entry.target as HTMLElement).classList.add('animate-fade-in-up');
           }
         });
       },
@@ -118,7 +118,7 @@ const PricingSection = () => {
         <div className="grid md:grid-cols-3 gap-8">
           {plans.map((plan, index) => (
             <div
-              key={index}
+              key={`plan-${index}`}
               data-scroll-reveal
               className={`bg-card rounded-2xl p-8 card-shadow relative opacity-0 ${
                 plan.popular ? 'ring-2 ring-primary' : ''
@@ -159,7 +159,7 @@ const PricingSection = () => {
 
               <div className="space-y-4">
                 {plan.features.map((feature, i) => (
-                  <div key={i} className="flex items-start gap-3">
+                  <div key={`feature-${index}-${i}`} className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                     <span className="font-inter text-sm text-foreground/80">
                       {feature}
