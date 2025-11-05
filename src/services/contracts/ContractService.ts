@@ -6,11 +6,14 @@ import {
   Networks,
   BASE_FEE,
   nativeToScVal,
-  Server as RpcServer,
   xdr,
   Account,
-  Memo
+  Memo,
+  rpc
 } from "@stellar/stellar-sdk";
+
+// Use rpc.Server from Stellar SDK
+type RpcServer = rpc.Server;
 
 export interface TransactionResult {
   success: boolean;
@@ -50,7 +53,7 @@ export abstract class ContractService {
   constructor(options: ContractClientOptions) {
     this.contractId = options.contractId;
     this.networkPassphrase = options.networkPassphrase;
-    this.rpcServer = new RpcServer(options.rpcUrl);
+    this.rpcServer = new rpc.Server(options.rpcUrl);
     this.wallet = options.wallet;
   }
   
@@ -87,15 +90,12 @@ export abstract class ContractService {
       // Simulate transaction first
       const simulateResult = await this.rpcServer.simulateTransaction(transaction);
       
-      if (simulateResult.error) {
+      if (rpc.Api.isSimulationError(simulateResult)) {
         throw new Error(`Simulation failed: ${simulateResult.error}`);
       }
 
       // Prepare transaction (add auth and footprint)
-      const preparedTx = await this.rpcServer.prepareTransaction(
-        transaction,
-        this.networkPassphrase
-      );
+      const preparedTx = await this.rpcServer.prepareTransaction(transaction);
 
       // Sign transaction
       const signedResult = await walletToUse.signTransaction(preparedTx.toXDR(), {
@@ -103,8 +103,11 @@ export abstract class ContractService {
         networkPassphrase: this.networkPassphrase
       });
 
+      // Parse the signed transaction XDR
+      const signedTx = TransactionBuilder.fromXDR(signedResult.signedTxXdr, this.networkPassphrase);
+      
       // Submit transaction
-      const submitResult = await this.rpcServer.sendTransaction(signedResult.signedTxXdr);
+      const submitResult = await this.rpcServer.sendTransaction(signedTx);
       
       if (submitResult.status === "ERROR") {
         throw new Error(`Transaction failed: ${submitResult.errorResult}`);
@@ -119,7 +122,7 @@ export abstract class ContractService {
       return {
         success: true,
         transactionHash: finalResult.hash,
-        result: finalResult.returnValue
+        result: 'returnValue' in finalResult ? finalResult.returnValue : null
       };
     } catch (error) {
       console.error(`Contract invocation failed for ${method}:`, error);
@@ -160,7 +163,7 @@ export abstract class ContractService {
       // Simulate transaction to get result
       const simulateResult = await this.rpcServer.simulateTransaction(transaction);
       
-      if (simulateResult.error) {
+      if (rpc.Api.isSimulationError(simulateResult)) {
         throw new Error(`Query simulation failed: ${simulateResult.error}`);
       }
 
