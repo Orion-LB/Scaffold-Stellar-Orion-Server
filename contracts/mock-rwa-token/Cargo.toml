@@ -12,6 +12,12 @@ doctest = false
 
 [dependencies]
 soroban-sdk.workspace = true
+stellar-tokens.workspace = true
+stellar-macros.workspace = true
+stellar-access.workspace = true  # For access control
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
+
+[features]
+testutils = ["soroban-sdk/testutils"]
