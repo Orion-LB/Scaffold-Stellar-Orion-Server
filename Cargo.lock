@@ -1448,6 +1448,8 @@ name = "strwa-token"
 version = "0.0.1"
 dependencies = [
  "soroban-sdk",
+ "stellar-macros",
+ "stellar-tokens",
 ]
 
 [[package]]
