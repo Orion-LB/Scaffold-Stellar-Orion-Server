@@ -1,5 +1,12 @@
 [workspace]
-members = ["contracts/*"]
+members = [
+    "contracts/mock-rwa-token",
+    "contracts/strwa-token", 
+    "contracts/rwa-vault",
+    "contracts/mock-oracle",
+    "contracts/lending-pool",
+    "contracts/usdc-mock"
+]
 resolver = "2"
 
 [workspace.package]
