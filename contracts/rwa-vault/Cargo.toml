@@ -7,11 +7,20 @@ license.workspace = true
 repository.workspace = true
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 doctest = false
 
 [dependencies]
-soroban-sdk.workspace = true
+soroban-sdk = { workspace = true }
+stellar-tokens = { workspace = true }
+stellar-macros = { workspace = true }
+stellar-access = { workspace = true }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
+usdc-mock = { path = "../usdc-mock" }
+mock-rwa-token = { path = "../mock-rwa-token" }
+strwa-token = { path = "../strwa-token" }
+
+[features]
+testutils = ["soroban-sdk/testutils"]

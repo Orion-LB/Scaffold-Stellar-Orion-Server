@@ -1,5 +1,6 @@
 #![no_std]
-mod contract;
+
+pub mod contract;
 
 #[cfg(test)]
 mod test;

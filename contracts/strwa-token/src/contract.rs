@@ -7,7 +7,7 @@ pub struct StRwaToken;
 
 #[contractimpl]
 impl StRwaToken {
-    pub fn __constructor(e: &Env, admin: Address) {
+    pub fn initialize(e: &Env, admin: Address) {
         // Set token metadata
         Base::set_metadata(
             e,
@@ -58,8 +58,11 @@ impl StRwaToken {
         // Burn tokens
         Base::burn(e, &from, amount);
     }
+}
 
-    #[cfg(test)]
+#[cfg(test)]
+#[contractimpl]
+impl StRwaToken {
     pub fn get_vault(e: &Env) -> Address {
         e.storage().instance().get(&symbol_short!("vault")).unwrap()
     }
