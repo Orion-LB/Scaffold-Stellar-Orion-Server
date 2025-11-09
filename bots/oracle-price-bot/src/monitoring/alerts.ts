@@ -27,6 +27,10 @@ export interface Alert {
     }
 
     checkHealth() {
-        // TODO: implement
+        // Simple alert health check for hackathon
+        const criticalAlerts = this.alerts.filter(a => a.severity === 'critical');
+        if (criticalAlerts.length > 0) {
+            console.log(`🚨 ${criticalAlerts.length} critical alerts in last period`);
+        }
     }
   }

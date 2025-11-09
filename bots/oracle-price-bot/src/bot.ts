@@ -124,23 +124,41 @@ export class OraclePriceBot {
     try {
       // 1. Fetch prices from all sources
       const fetchers = this.fetchers.get(asset)!;
-      const pricePromises = fetchers.map(f => f.fetchPrice(asset));
-      const results = await Promise.allSettled(pricePromises);
+      const pricePromises = fetchers.map(async (f) => {
+        const fetchStartTime = Date.now();
+        try {
+            const price = await f.fetchPrice(asset);
+            const fetchEndTime = Date.now();
+            return {
+                price,
+                sourceName: f.getName(),
+                weight: f.getWeight(),
+                responseTime: fetchEndTime - fetchStartTime,
+                status: 'fulfilled' as const,
+            };
+        } catch (error) {
+            return {
+                sourceName: f.getName(),
+                status: 'rejected' as const,
+                reason: error,
+            };
+        }
+      });
+      const results = await Promise.all(pricePromises);
 
       const prices: number[] = [];
       const weights: number[] = [];
 
-      for (let i = 0; i < results.length; i++) {
-        const result = results[i];
+      for (const result of results) {
         if (result.status === 'fulfilled') {
-          prices.push(result.value);
-          weights.push(fetchers[i].getWeight());
-          this.metrics.recordSourceSuccess(fetchers[i].getName());
+          prices.push(result.price);
+          weights.push(result.weight);
+          this.metrics.recordSourceSuccess(asset, result.sourceName, result.responseTime);
         } else {
-          this.logger.warn(`Source ${fetchers[i].getName()} failed`, {
+          this.logger.warn(`Source ${result.sourceName} failed`, {
             error: result.reason,
           });
-          this.metrics.recordSourceFailure(fetchers[i].getName());
+          this.metrics.recordSourceFailure(asset, result.sourceName);
         }
       }
 

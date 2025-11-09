@@ -13,6 +13,8 @@ export interface BotMetrics {
     // Data sources
     sourceHealthMap: Map<string, {
       successRate: number;            // %
+      successfulRequests: number;
+      totalRequests: number;
       averageResponseTime: number;    // ms
       lastFailure: Date | null;
     }>;
@@ -35,15 +37,36 @@ export class MetricsCollector {
         } else {
             assetMetrics.failedUpdates++;
         }
-        assetMetrics.averageLatency = ((assetMetrics.averageLatency * (assetMetrics.successfulUpdates -1)) + latency) / assetMetrics.successfulUpdates;
+        assetMetrics.averageLatency = assetMetrics.successfulUpdates > 0 ? ((assetMetrics.averageLatency * (assetMetrics.successfulUpdates -1)) + latency) / assetMetrics.successfulUpdates : latency;
     }
 
-    recordSourceSuccess(sourceName: string) {
-        // TODO: implement
+    private getSourceHealth(asset: string, sourceName: string) {
+        const assetMetrics = this.getAssetMetrics(asset);
+        if (!assetMetrics.sourceHealthMap.has(sourceName)) {
+            assetMetrics.sourceHealthMap.set(sourceName, {
+                successRate: 100,
+                successfulRequests: 0,
+                totalRequests: 0,
+                averageResponseTime: 0,
+                lastFailure: null,
+            });
+        }
+        return assetMetrics.sourceHealthMap.get(sourceName)!;
     }
 
-    recordSourceFailure(sourceName: string) {
-        // TODO: implement
+    recordSourceSuccess(asset: string, sourceName: string, responseTime: number) {
+        const sourceHealth = this.getSourceHealth(asset, sourceName);
+        sourceHealth.totalRequests++;
+        sourceHealth.successfulRequests++;
+        sourceHealth.successRate = (sourceHealth.successfulRequests / sourceHealth.totalRequests) * 100;
+        sourceHealth.averageResponseTime = ((sourceHealth.averageResponseTime * (sourceHealth.successfulRequests - 1)) + responseTime) / sourceHealth.successfulRequests;
+    }
+
+    recordSourceFailure(asset: string, sourceName: string) {
+        const sourceHealth = this.getSourceHealth(asset, sourceName);
+        sourceHealth.totalRequests++;
+        sourceHealth.successRate = (sourceHealth.successfulRequests / sourceHealth.totalRequests) * 100;
+        sourceHealth.lastFailure = new Date();
     }
 
     getAssetMetrics(asset: string): BotMetrics {
@@ -69,6 +92,14 @@ export class MetricsCollector {
     }
 
     checkHealth() {
-        // TODO: implement
+        // Simple health check for hackathon - just verify we have recent updates
+        for (const [asset, metrics] of this.metrics.entries()) {
+            const now = Date.now() / 1000;
+            const staleness = now - metrics.lastUpdateTimestamp;
+
+            if (staleness > 300) { // 5 minutes
+                console.warn(`⚠️ Oracle update is stale for ${asset}: ${staleness}s old`);
+            }
+        }
     }
 }
