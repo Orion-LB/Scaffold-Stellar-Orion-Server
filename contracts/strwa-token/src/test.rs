@@ -6,8 +6,10 @@ use soroban_sdk::{testutils::Address as _, Address, Env, String};
 use crate::contract::{StRwaToken, StRwaTokenClient};
 
 fn create_strwa_token_contract<'a>(e: &Env, admin: &Address) -> StRwaTokenClient<'a> {
-    let address = e.register(StRwaToken, (admin,));
-    StRwaTokenClient::new(e, &address)
+    let address = e.register(StRwaToken, ());
+    let client = StRwaTokenClient::new(e, &address);
+    client.initialize(admin);
+    client
 }
 
 #[test]
