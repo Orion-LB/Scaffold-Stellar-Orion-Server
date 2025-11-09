@@ -6,6 +6,7 @@ import {
   Networks,
   BASE_FEE,
   nativeToScVal,
+  scValToNative,
   xdr,
   Account,
   Memo,
@@ -221,11 +222,10 @@ export abstract class ContractService {
   
   private convertScValToNative(scVal: any): any {
     if (!scVal) return null;
-    
+
     try {
-      // This is a simplified conversion - in practice, you'd need more robust handling
-      // based on the specific ScVal type
-      return scVal;
+      // Use Stellar SDK's scValToNative for proper conversion
+      return scValToNative(scVal);
     } catch (error) {
       console.warn('Failed to convert ScVal to native:', error);
       return scVal;

@@ -1,28 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { 
-  PieChart, 
-  Pie, 
-  Cell, 
-  ResponsiveContainer, 
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
   AreaChart,
   Area,
-  XAxis, 
+  XAxis,
   YAxis,
   CartesianGrid
 } from "recharts";
-import { 
-  TrendingUp, 
-  Shield, 
-  DollarSign, 
+import {
+  TrendingUp,
+  Shield,
+  DollarSign,
   Activity,
   Zap,
-  ChevronRight
+  ChevronRight,
+  Wallet
 } from "lucide-react";
-import HeroBackground from "@/components/HeroBackground";
+import { useContractServices } from "@/hooks/useContractServices";
+import { toast } from "sonner";
 
 const ProfileSection = () => {
   const [autoRepayEnabled, setAutoRepayEnabled] = useState(true);
@@ -31,34 +33,126 @@ const ProfileSection = () => {
   const [showYieldModal, setShowYieldModal] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
 
-  // Mock data
+  // Real balances from contracts
+  const [rwaBalance, setRwaBalance] = useState<bigint>(BigInt(0));
+  const [stRwaBalance, setStRwaBalance] = useState<bigint>(BigInt(0));
+  const [usdcBalance, setUsdcBalance] = useState<bigint>(BigInt(0));
+  const [claimableYield, setClaimableYield] = useState<bigint>(BigInt(0));
+  const [activeLoan, setActiveLoan] = useState<any>(null);
+  const [stRwaPrice, setStRwaPrice] = useState<bigint>(BigInt(10500)); // Default 105 USDC
+
+  const {
+    isConnected,
+    address,
+    rwaService,
+    stRwaService,
+    usdcService,
+    vaultService,
+    lendingPoolService,
+    oracleService,
+  } = useContractServices();
+
+  // Load real data from contracts
+  useEffect(() => {
+    if (!isConnected || !address) return;
+
+    const loadData = async () => {
+      try {
+        const [rwa, stRwa, usdc, yield_amount, loan, price] = await Promise.all([
+          rwaService.balance(address),
+          stRwaService.balance(address),
+          usdcService.balance(address),
+          vaultService.claimable_yield(address).catch(() => BigInt(0)),
+          lendingPoolService.get_loan(address).catch(() => null),
+          oracleService.get_price().catch(() => BigInt(10500)),
+        ]);
+
+        setRwaBalance(rwa);
+        setStRwaBalance(stRwa);
+        setUsdcBalance(usdc);
+        setClaimableYield(yield_amount);
+        setActiveLoan(loan);
+        setStRwaPrice(price);
+      } catch (error) {
+        console.error("Failed to load profile data:", error);
+      }
+    };
+
+    loadData();
+    const interval = setInterval(loadData, 15000); // Refresh every 15s
+    return () => clearInterval(interval);
+  }, [isConnected, address, rwaService, stRwaService, usdcService, vaultService, lendingPoolService, oracleService]);
+
+  // Helper functions
+  const formatBalance = (balance: bigint, decimals: number = 18) => {
+    return (Number(balance) / Math.pow(10, decimals)).toFixed(2);
+  };
+
+  const formatUSD = (amount: number) => {
+    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  // Calculate real portfolio values
+  const stRwaPriceUSD = Number(stRwaPrice) / 100; // Convert basis points to USD
+  const rwaValue = parseFloat(formatBalance(rwaBalance)) * 1; // Assuming RWA = $1 for now
+  const stRwaValue = parseFloat(formatBalance(stRwaBalance)) * stRwaPriceUSD;
+  const usdcValue = parseFloat(formatBalance(usdcBalance, 7));
+  const totalPortfolioValue = rwaValue + stRwaValue + usdcValue;
+
   const portfolioData = [
-    { name: 'Staked', value: 42500, color: '#774be5' },
-    { name: 'Available', value: 8500, color: '#10b981' },
-    { name: 'Borrowed', value: 15000, color: '#f59e0b' }
+    { name: 'Staked (stRWA)', value: parseFloat(stRwaValue.toFixed(2)), color: '#774be5' },
+    { name: 'Available (RWA)', value: parseFloat(rwaValue.toFixed(2)), color: '#10b981' },
+    { name: 'Liquidity (USDC)', value: parseFloat(usdcValue.toFixed(2)), color: '#f59e0b' }
   ];
 
+  const walletBalances = [
+    {
+      asset: "OrionAlexRWA (stRWA)",
+      balance: formatBalance(stRwaBalance),
+      value: formatUSD(stRwaValue),
+      color: "#774be5"
+    },
+    {
+      asset: "AlexRWA (RWA)",
+      balance: formatBalance(rwaBalance),
+      value: formatUSD(rwaValue),
+      color: "#10b981"
+    },
+    {
+      asset: "USDC",
+      balance: formatBalance(usdcBalance, 7),
+      value: formatUSD(usdcValue),
+      color: "#f59e0b"
+    }
+  ];
+
+  // Calculate health factor if loan exists
+  const calculateHealthFactor = () => {
+    if (!activeLoan || activeLoan.debt === BigInt(0)) return 0;
+
+    const collateralValue = parseFloat(formatBalance(activeLoan.collateral)) * stRwaPriceUSD;
+    const debtValue = parseFloat(formatBalance(activeLoan.debt, 7));
+
+    if (debtValue === 0) return 0;
+    return collateralValue / debtValue;
+  };
+
+  const healthFactor = calculateHealthFactor();
+  const totalDebt = activeLoan ? parseFloat(formatBalance(activeLoan.debt, 7)) : 0;
+
+  // Mock yield history (TODO: Could be fetched from contract events in future)
   const yieldHistory = [
     { month: 'Jan', yield: 420 },
     { month: 'Feb', yield: 485 },
     { month: 'Mar', yield: 520 },
     { month: 'Apr', yield: 615 },
     { month: 'May', yield: 580 },
-    { month: 'Jun', yield: 650 }
+    { month: 'Jun', yield: parseFloat(formatBalance(claimableYield, 7)) }
   ];
 
-  const walletBalances = [
-    { asset: "OrionAlexRWA", balance: "850.50", value: "$42,525", color: "#774be5" },
-    { asset: "USDC", balance: "15,000.00", value: "$15,000", color: "#10b981" },
-    { asset: "XLM", balance: "2,500.00", value: "$350", color: "#f59e0b" }
-  ];
-
+  // TODO: Transaction history from contract events
   const recentTransactions = [
-    { type: "Stake", asset: "alexRWA", amount: "500.00", date: "Mar 15", status: "Completed" },
-    { type: "Borrow", asset: "USDC", amount: "5,000.00", date: "Mar 14", status: "Completed" },
-    { type: "Auto-Repay", asset: "USDC", amount: "25.50", date: "Mar 13", status: "Completed" },
-    { type: "Unstake", asset: "OrionAlexRWA", amount: "100.00", date: "Mar 12", status: "Pending" },
-    { type: "Claim", asset: "Yield", amount: "45.25", date: "Mar 11", status: "Completed" }
+    { type: "Info", asset: "Transactions", amount: "Coming soon", date: "N/A", status: "Pending" }
   ];
 
   const handleAutoRepayToggle = () => {
@@ -69,6 +163,52 @@ const ProfileSection = () => {
     setAutoRepayEnabled(!autoRepayEnabled);
     setShowAutoRepayModal(false);
   };
+
+  // Claim yield functionality
+  const handleClaimYield = async () => {
+    if (!isConnected || !address) {
+      toast.error("Please connect your wallet");
+      return;
+    }
+
+    if (claimableYield <= 0) {
+      toast.error("No yield available to claim");
+      return;
+    }
+
+    try {
+      const result = await vaultService.claim_yield(address);
+
+      if (result.success) {
+        toast.success("Yield claimed successfully!");
+        // Refresh balances
+        const [yield_amount, usdc] = await Promise.all([
+          vaultService.claimable_yield(address).catch(() => BigInt(0)),
+          usdcService.balance(address),
+        ]);
+        setClaimableYield(yield_amount);
+        setUsdcBalance(usdc);
+      } else {
+        toast.error("Claim failed");
+      }
+    } catch (error: any) {
+      console.error("Claim failed:", error);
+      toast.error(error.message || "Claim failed");
+    }
+  };
+
+  // Show connect wallet message if not connected
+  if (!isConnected) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="text-center">
+          <Wallet className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Connect Your Wallet</h2>
+          <p className="text-gray-600">Please connect your wallet to view your profile</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -113,10 +253,10 @@ const ProfileSection = () => {
               </div>
               
               <div className="space-y-2">
-                <div className="font-antic text-3xl font-bold text-foreground">$66,000</div>
-                <div className="flex items-center gap-1 text-green-600">
-                  <TrendingUp className="w-4 h-4" />
-                  <span className="font-plus-jakarta text-sm">+8.2% this month</span>
+                <div className="font-antic text-3xl font-bold text-foreground">{formatUSD(totalPortfolioValue)}</div>
+                <div className="flex items-center gap-1 text-blue-600">
+                  <Shield className="w-4 h-4" />
+                  <span className="font-plus-jakarta text-sm">Live Balance</span>
                 </div>
                 <div className="text-xs text-muted-foreground mt-3">
                   3 assets • Click for details
@@ -150,10 +290,10 @@ const ProfileSection = () => {
               </div>
 
               <div className="space-y-2">
-                <div className="font-antic text-3xl font-bold text-foreground">$425.50</div>
+                <div className="font-antic text-3xl font-bold text-foreground">{formatUSD(parseFloat(formatBalance(claimableYield, 7)))}</div>
                 <div className="text-sm text-muted-foreground">Available to claim</div>
                 <div className="text-xs text-muted-foreground mt-3">
-                  Total earned: $3,425 • Click for chart
+                  Click for chart • Claim from vault
                 </div>
               </div>
             </div>
@@ -172,13 +312,21 @@ const ProfileSection = () => {
 
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="text-center p-3 bg-green-50 rounded-lg">
-                    <div className="font-antic text-lg font-bold text-green-600">2.45</div>
-                    <div className="text-xs text-green-700">Health Factor</div>
+                  <div className={`text-center p-3 rounded-lg ${healthFactor === 0 ? 'bg-gray-50' : healthFactor >= 1.4 ? 'bg-green-50' : 'bg-red-50'}`}>
+                    <div className={`font-antic text-lg font-bold ${healthFactor === 0 ? 'text-gray-600' : healthFactor >= 1.4 ? 'text-green-600' : 'text-red-600'}`}>
+                      {healthFactor === 0 ? 'N/A' : healthFactor.toFixed(2)}
+                    </div>
+                    <div className={`text-xs ${healthFactor === 0 ? 'text-gray-700' : healthFactor >= 1.4 ? 'text-green-700' : 'text-red-700'}`}>
+                      Health Factor
+                    </div>
                   </div>
-                  <div className="text-center p-3 bg-orange-50 rounded-lg">
-                    <div className="font-antic text-lg font-bold text-foreground">$15,170</div>
-                    <div className="text-xs text-orange-700">Total Debt</div>
+                  <div className={`text-center p-3 rounded-lg ${totalDebt === 0 ? 'bg-gray-50' : 'bg-orange-50'}`}>
+                    <div className="font-antic text-lg font-bold text-foreground">
+                      {totalDebt === 0 ? 'No Loan' : formatUSD(totalDebt)}
+                    </div>
+                    <div className={`text-xs ${totalDebt === 0 ? 'text-gray-700' : 'text-orange-700'}`}>
+                      Total Debt
+                    </div>
                   </div>
                 </div>
 
@@ -315,12 +463,16 @@ const ProfileSection = () => {
               {/* Yield Metrics */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <div className="font-antic text-2xl font-bold text-green-600">$425.50</div>
+                  <div className="font-antic text-2xl font-bold text-green-600">
+                    {formatUSD(parseFloat(formatBalance(claimableYield, 7)))}
+                  </div>
                   <div className="text-sm text-green-700">Claimable Now</div>
                 </div>
                 <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <div className="font-antic text-2xl font-bold text-blue-600">$3,425</div>
-                  <div className="text-sm text-blue-700">Total Earned</div>
+                  <div className="font-antic text-2xl font-bold text-blue-600">
+                    {stRwaBalance > 0 ? formatBalance(stRwaBalance) : '0.00'}
+                  </div>
+                  <div className="text-sm text-blue-700">stRWA Staked</div>
                 </div>
               </div>
 
@@ -337,10 +489,10 @@ const ProfileSection = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
-                    <Area 
-                      type="monotone" 
-                      dataKey="yield" 
-                      stroke="#10b981" 
+                    <Area
+                      type="monotone"
+                      dataKey="yield"
+                      stroke="#10b981"
                       strokeWidth={2}
                       fill="url(#yieldGradient)"
                       dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
@@ -348,9 +500,13 @@ const ProfileSection = () => {
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
-              
-              <Button className="w-full bg-green-600 hover:bg-green-700 text-white font-plus-jakarta">
-                Claim Available Yield
+
+              <Button
+                onClick={handleClaimYield}
+                disabled={claimableYield <= 0}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-plus-jakarta disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {claimableYield > 0 ? 'Claim Available Yield' : 'No Yield Available'}
               </Button>
             </div>
           </DialogContent>
@@ -400,14 +556,19 @@ const ProfileSection = () => {
             <div className="space-y-4 mt-4">
               <div className="bg-primary/5 rounded-xl p-4 text-center">
                 <div className="font-plus-jakarta text-sm text-muted-foreground mb-2">
-                  {autoRepayEnabled 
+                  {autoRepayEnabled
                     ? 'Auto-repay will be disabled for all loans'
                     : 'Enable automatic repayment using yield earnings'
                   }
                 </div>
                 <div className="font-antic text-lg font-semibold text-foreground">
-                  Available Yield: $425.50
+                  Available Yield: {formatUSD(parseFloat(formatBalance(claimableYield, 7)))}
                 </div>
+              </div>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-xs text-yellow-800">
+                  Note: Auto-repay is a UI feature. The actual smart contract logic would need to be implemented in the backend.
+                </p>
               </div>
             </div>
 

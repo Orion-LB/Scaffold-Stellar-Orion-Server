@@ -40,13 +40,13 @@ const Dashboard = () => {
         
         {/* Top Layer - Main Dashboard Content */}
         <main
-          className={`fixed top-16 bottom-0 right-0 transition-all duration-300 overflow-hidden z-20 ${
+          className={`fixed top-16 bottom-0 right-0 transition-all duration-300 z-20 ${
             sidebarCollapsed
               ? 'left-20' // Give space for collapsed sidebar (64px + 16px margin)
               : 'left-72' // Give space for expanded sidebar (256px + 16px margin)
           }`}
         >
-          <div className="h-full overflow-hidden">
+          <div className="h-full">
             {renderActiveSection()}
           </div>
         </main>

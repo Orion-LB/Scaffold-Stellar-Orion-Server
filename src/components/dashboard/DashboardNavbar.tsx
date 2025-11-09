@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import orion from "@/assets/OrionBg.png";
+import { useContractServices } from "@/hooks/useContractServices";
+import { toast } from "sonner";
 
 const DashboardNavbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState("");
+  const { isConnected, address, connect, disconnect } = useContractServices();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -17,15 +18,30 @@ const DashboardNavbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const connectWallet = async () => {
-    // Mock wallet connection - will be replaced with real implementation
-    setWalletConnected(true);
-    setWalletAddress("GDHY...J3K8");
+  const handleConnect = async () => {
+    try {
+      await connect();
+      toast.success("Wallet connected successfully!");
+    } catch (error) {
+      console.error("Failed to connect wallet:", error);
+      toast.error("Failed to connect wallet. Please try again.");
+    }
   };
 
-  const disconnectWallet = () => {
-    setWalletConnected(false);
-    setWalletAddress("");
+  const handleDisconnect = async () => {
+    try {
+      await disconnect();
+      toast.success("Wallet disconnected");
+    } catch (error) {
+      console.error("Failed to disconnect wallet:", error);
+      toast.error("Failed to disconnect wallet");
+    }
+  };
+
+  // Format address for display
+  const formatAddress = (addr: string) => {
+    if (!addr) return "";
+    return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
   };
 
   return (
@@ -45,24 +61,26 @@ const DashboardNavbar = () => {
 
           {/* Wallet Connection - Top Right */}
           <div className="flex items-center ml-auto">
-            {walletConnected ? (
+            {isConnected ? (
               <div className="flex items-center gap-3">
                 <div className="hidden md:flex items-center gap-2 bg-card rounded-full px-4 py-2 card-shadow">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="font-inter text-sm text-foreground font-medium tracking-wider">{walletAddress}</span>
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="font-inter text-sm text-foreground font-medium tracking-wider">
+                    {formatAddress(address)}
+                  </span>
                 </div>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
-                  onClick={disconnectWallet}
+                  onClick={handleDisconnect}
                   className="bg-black text-white hover:bg-gray-800 font-antic font-semibold px-6 py-2 rounded-[10px] tracking-wide"
                 >
                   Disconnect
                 </Button>
               </div>
             ) : (
-              <Button 
-                onClick={connectWallet}
+              <Button
+                onClick={handleConnect}
                 className="bg-black/75 text-white hover:bg-gray-800 font-antic font-semibold px-6 py-2 rounded-[10px] tracking-wide"
               >
                 Connect Wallet

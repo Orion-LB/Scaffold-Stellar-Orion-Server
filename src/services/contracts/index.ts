@@ -4,6 +4,8 @@ export { VaultService } from './VaultService';
 export { LendingPoolService } from './LendingPoolService';
 export { MockRWAService } from './MockRWAService';
 export { OracleService } from './OracleService';
+export { USDCService } from './USDCService';
+export { StakedRWAService } from './StakedRWAService';
 
 // Types
 export type {
@@ -19,13 +21,15 @@ export type { LoanInfo } from './LendingPoolService';
 export type { PriceData } from './OracleService';
 
 // Contract addresses and configuration
+// Loaded from deployed testnet contracts
+// See: orion-backened/Scaffold-Stellar-Orion-Server/Integration_requirements.md
 export const CONTRACT_ADDRESSES = {
-  // These will be replaced with actual deployed contract addresses
-  MOCK_RWA_A: 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
-  STAKED_RWA_A: 'CBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
-  RWA_VAULT_A: 'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
-  LENDING_POOL: 'CDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  MOCK_ORACLE: 'CEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE',
+  USDC: 'CAXHQJ6IHN2TPAJ4NEOXJJLRRAO74BEAWA3RXHD6NSOWRBQCTVZA3ZGS',
+  MOCK_RWA_A: 'CCHUQ75NY5CFWIXG42RJRZQDMZ2HOAERS4RSX4EL6EEOUE6OMOFLBFVV',
+  STAKED_RWA_A: 'CCCTL6UHRPOODYKYOXAW6Y3NKOFPFKB7QIYRRYGEANM2KHYYYAT4PJUS',
+  RWA_VAULT_A: 'CB3I43AX6VBYTHLVGXK3TVM5RZXLTSHT5RIHOTK2BHORNQY3RF3QH2TT',
+  LENDING_POOL: 'CBJM554JCHWRFG7QFBKMPAPOO4DBJPLKHSH2T7U4FRLCPDS36U44WT5Y',
+  MOCK_ORACLE: 'CD5XYT6WXOB567JC3QZGJ7RWHWP4N3C4GJ5LX75WDWUGL7NPXFJJC6AZ',
 };
 
 // Network configuration
@@ -52,6 +56,8 @@ import { VaultService } from './VaultService';
 import { LendingPoolService } from './LendingPoolService';
 import { MockRWAService } from './MockRWAService';
 import { OracleService } from './OracleService';
+import { USDCService } from './USDCService';
+import { StakedRWAService } from './StakedRWAService';
 import type { StellarWalletProvider } from './ContractService';
 
 export const createVaultService = (wallet?: StellarWalletProvider, network: keyof typeof NETWORK_CONFIG = 'TESTNET') => {
@@ -84,6 +90,24 @@ export const createMockRWAService = (wallet?: StellarWalletProvider, network: ke
 export const createOracleService = (wallet?: StellarWalletProvider, network: keyof typeof NETWORK_CONFIG = 'TESTNET') => {
   return new OracleService({
     contractId: CONTRACT_ADDRESSES.MOCK_ORACLE,
+    networkPassphrase: NETWORK_CONFIG[network].networkPassphrase,
+    rpcUrl: NETWORK_CONFIG[network].rpcUrl,
+    wallet,
+  });
+};
+
+export const createUSDCService = (wallet?: StellarWalletProvider, network: keyof typeof NETWORK_CONFIG = 'TESTNET') => {
+  return new USDCService({
+    contractId: CONTRACT_ADDRESSES.USDC,
+    networkPassphrase: NETWORK_CONFIG[network].networkPassphrase,
+    rpcUrl: NETWORK_CONFIG[network].rpcUrl,
+    wallet,
+  });
+};
+
+export const createStakedRWAService = (wallet?: StellarWalletProvider, network: keyof typeof NETWORK_CONFIG = 'TESTNET') => {
+  return new StakedRWAService({
+    contractId: CONTRACT_ADDRESSES.STAKED_RWA_A,
     networkPassphrase: NETWORK_CONFIG[network].networkPassphrase,
     rpcUrl: NETWORK_CONFIG[network].rpcUrl,
     wallet,

@@ -1,66 +1,112 @@
 import { ContractService, TransactionResult, StellarWalletProvider, ContractClientOptions } from './ContractService';
 
+/**
+ * RWA Token Service
+ * Real World Asset Token with Whitelist
+ * Decimals: 18
+ * Transfers only work between whitelisted addresses
+ */
 export class MockRWAService extends ContractService {
   constructor(options: ContractClientOptions) {
     super(options);
   }
-  
-  // Queries
-  async getUserBalance(userAddress: string): Promise<bigint> {
-    const result = await this.queryContract('get_balance', { user: userAddress });
+
+  // ============ Read Operations ============
+
+  /**
+   * Get token balance for an account
+   */
+  async balance(account: string): Promise<bigint> {
+    const result = await this.queryContract('balance', { account });
     return BigInt(result || '0');
   }
-  
-  async isWhitelisted(userAddress: string): Promise<boolean> {
-    const result = await this.queryContract('is_whitelisted', { user: userAddress });
+
+  /**
+   * Check if address is whitelisted
+   */
+  async allowed(account: string): Promise<boolean> {
+    const result = await this.queryContract('allowed', { account });
     return Boolean(result);
   }
-  
-  async getTotalSupply(): Promise<bigint> {
-    const result = await this.queryContract('get_total_supply');
+
+  /**
+   * Get allowance
+   */
+  async allowance(owner: string, spender: string): Promise<bigint> {
+    const result = await this.queryContract('allowance', { owner, spender });
     return BigInt(result || '0');
   }
-  
-  async getAllowance(owner: string, spender: string): Promise<bigint> {
-    const result = await this.queryContract('get_allowance', { owner, spender });
+
+  /**
+   * Get total supply
+   */
+  async total_supply(): Promise<bigint> {
+    const result = await this.queryContract('total_supply');
     return BigInt(result || '0');
   }
-  
-  // Transactions
-  async transfer(to: string, amount: bigint, wallet?: StellarWalletProvider): Promise<TransactionResult> {
-    return await this.invokeContract('transfer', { to, amount: amount.toString() }, wallet);
+
+  // ============ Write Operations ============
+
+  /**
+   * Transfer RWA tokens
+   * Only works between whitelisted addresses
+   */
+  async transfer(from: string, to: string, amount: bigint, wallet?: StellarWalletProvider): Promise<TransactionResult> {
+    return await this.invokeContract('transfer', { from, to, amount: amount.toString() }, wallet);
   }
-  
-  async approve(spender: string, amount: bigint, wallet?: StellarWalletProvider): Promise<TransactionResult> {
-    return await this.invokeContract('approve', { spender, amount: amount.toString() }, wallet);
+
+  /**
+   * Approve spender to use tokens
+   */
+  async approve(owner: string, spender: string, amount: bigint, wallet?: StellarWalletProvider): Promise<TransactionResult> {
+    return await this.invokeContract('approve', { owner, spender, amount: amount.toString() }, wallet);
   }
-  
-  // Testing/Demo
-  async mintMockRWA(userAddress: string, amount: bigint, wallet?: StellarWalletProvider): Promise<TransactionResult> {
-    return await this.invokeContract('mint_mock_rwa', { user: userAddress, amount: amount.toString() }, wallet);
+
+  /**
+   * Transfer using allowance
+   */
+  async transfer_from(spender: string, from: string, to: string, amount: bigint, wallet?: StellarWalletProvider): Promise<TransactionResult> {
+    return await this.invokeContract('transfer_from', { spender, from, to, amount: amount.toString() }, wallet);
   }
-  
-  // Admin
-  async addToWhitelist(address: string, wallet?: StellarWalletProvider): Promise<TransactionResult> {
-    return await this.invokeContract('add_to_whitelist', { user: address }, wallet);
+
+  /**
+   * Burn RWA tokens
+   */
+  async burn(from: string, amount: bigint, wallet?: StellarWalletProvider): Promise<TransactionResult> {
+    return await this.invokeContract('burn', { from, amount: amount.toString() }, wallet);
   }
-  
-  async removeFromWhitelist(address: string, wallet?: StellarWalletProvider): Promise<TransactionResult> {
-    return await this.invokeContract('remove_from_whitelist', { user: address }, wallet);
+
+  // ============ Admin/Manager Operations ============
+
+  /**
+   * Add address to whitelist (enables transfers)
+   * Manager role required
+   */
+  async allow_user(user: string, operator: string, wallet?: StellarWalletProvider): Promise<TransactionResult> {
+    return await this.invokeContract('allow_user', { user, operator }, wallet);
   }
-  
-  protected getMockQueryResult(method: string, params: Record<string, any>): any {
-    switch (method) {
-      case 'get_balance':
-        return BigInt('1250000000000000000000'); // 1,250 tokens with 18 decimals
-      case 'is_whitelisted':
-        return true; // User is whitelisted
-      case 'get_total_supply':
-        return BigInt('10000000000000000000000000'); // 10M tokens
-      case 'get_allowance':
-        return BigInt('115792089237316195423570985008687907853269984665640564039457584007913129639935'); // Max uint256 (unlimited)
-      default:
-        return null;
-    }
+
+  /**
+   * Remove address from whitelist
+   * Manager role required
+   */
+  async disallow_user(user: string, operator: string, wallet?: StellarWalletProvider): Promise<TransactionResult> {
+    return await this.invokeContract('disallow_user', { user, operator }, wallet);
+  }
+
+  // ============ Helper Methods ============
+
+  /**
+   * Convert RWA amount to contract units (18 decimals)
+   */
+  toContractUnits(rwaAmount: number): bigint {
+    return BigInt(Math.floor(rwaAmount * 1e18));
+  }
+
+  /**
+   * Convert contract units to RWA amount
+   */
+  fromContractUnits(contractUnits: bigint): number {
+    return Number(contractUnits) / 1e18;
   }
 }

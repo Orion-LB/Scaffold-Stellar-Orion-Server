@@ -1,101 +1,92 @@
 import { ContractService, TransactionResult, StellarWalletProvider, ContractClientOptions } from './ContractService';
 
 export interface PriceData {
-  asset: string;
   price: bigint;
-  decimals: number;
-  lastUpdate: Date;
-  confidence: number;
+  timestamp: bigint;
 }
 
+/**
+ * Oracle Service
+ * Price oracle for asset pricing
+ * Prices are in basis points (e.g., 10500 = 105.00 USDC)
+ */
 export class OracleService extends ContractService {
   constructor(options: ContractClientOptions) {
     super(options);
   }
-  
-  // Queries
-  async getPrice(assetAddress: string): Promise<bigint> {
-    const result = await this.queryContract('get_price', { asset: assetAddress });
+
+  // ============ Read Operations ============
+
+  /**
+   * Get latest price for asset in basis points
+   * Example: 10500 BP = 105.00 USDC
+   */
+  async get_price(asset: string): Promise<bigint> {
+    const result = await this.queryContract('get_price', { asset });
     return BigInt(result || '0');
   }
-  
-  async getLastUpdateTime(assetAddress: string): Promise<Date> {
-    const result = await this.queryContract('get_last_update_time', { asset: assetAddress });
-    return new Date(result || Date.now());
+
+  /**
+   * Get price with timestamp
+   * Returns: [price, timestamp]
+   */
+  async get_price_data(asset: string): Promise<PriceData> {
+    const result = await this.queryContract('get_price_data', { asset });
+    return result;
   }
-  
-  async getPriceData(assetAddress: string): Promise<PriceData> {
-    const result = await this.queryContract('get_price_data', { asset: assetAddress });
-    return result || this.getMockQueryResult('get_price_data', { asset: assetAddress });
-  }
-  
-  async getSupportedAssets(): Promise<string[]> {
-    const result = await this.queryContract('get_supported_assets');
-    return result || [];
-  }
-  
-  // Transactions (bot-only, but exposed for admin testing)
-  async submitPrice(assetAddress: string, price: bigint, wallet?: StellarWalletProvider): Promise<TransactionResult> {
-    return await this.invokeContract('submit_price', { asset: assetAddress, price: price.toString() }, wallet);
-  }
-  
-  async submitPriceWithConfidence(
-    assetAddress: string, 
-    price: bigint, 
-    confidence: number, 
-    wallet?: StellarWalletProvider
-  ): Promise<TransactionResult> {
-    return await this.invokeContract('submit_price_with_confidence', { 
-      asset: assetAddress, 
-      price: price.toString(), 
-      confidence: confidence.toString() 
+
+  // ============ Write Operations (Bot Only) ============
+
+  /**
+   * Submit asset price update
+   * Bot only function
+   *
+   * Parameters:
+   * - bot: Bot address (must be authorized)
+   * - asset: Asset contract address
+   * - price: Price in basis points (e.g., 10500 = 105.00 USDC)
+   */
+  async submit_price(bot: string, asset: string, price: bigint, wallet?: StellarWalletProvider): Promise<TransactionResult> {
+    return await this.invokeContract('submit_price', {
+      bot,
+      asset,
+      price: price.toString()
     }, wallet);
   }
-  
-  protected getMockQueryResult(method: string, params: Record<string, any>): any {
-    switch (method) {
-      case 'get_price':
-        const { asset } = params;
-        // Return mock prices in USD with 8 decimals (like Chainlink)
-        const prices: Record<string, bigint> = {
-          'alexRWA': BigInt('5000000000'), // $50.00
-          'ethRWA': BigInt('2500000000'), // $25.00
-          'btcRWA': BigInt('45000000000000'), // $450,000.00
-          'USDC': BigInt('100000000'), // $1.00
-          'XLM': BigInt('14000000') // $0.14
-        };
-        return prices[asset] || BigInt('100000000');
-      case 'get_last_update_time':
-        return new Date(Date.now() - Math.random() * 300000); // Within last 5 minutes
-      case 'get_price_data':
-        const { asset: priceAsset } = params;
-        const mockPrices: Record<string, PriceData> = {
-          'alexRWA': {
-            asset: priceAsset,
-            price: BigInt('5000000000'),
-            decimals: 8,
-            lastUpdate: new Date(Date.now() - 120000), // 2 minutes ago
-            confidence: 95.5
-          },
-          'USDC': {
-            asset: priceAsset,
-            price: BigInt('100000000'),
-            decimals: 8,
-            lastUpdate: new Date(Date.now() - 60000), // 1 minute ago
-            confidence: 99.9
-          }
-        };
-        return mockPrices[priceAsset] || {
-          asset: priceAsset,
-          price: BigInt('100000000'),
-          decimals: 8,
-          lastUpdate: new Date(),
-          confidence: 90.0
-        };
-      case 'get_supported_assets':
-        return ['alexRWA', 'ethRWA', 'btcRWA', 'USDC', 'XLM'];
-      default:
-        return null;
-    }
+
+  // ============ Helper Methods ============
+
+  /**
+   * Convert basis points to USDC amount
+   * Example: 10500 BP → 105.00 USDC
+   */
+  basisPointsToUSDC(basisPoints: bigint): number {
+    return Number(basisPoints) / 100;
+  }
+
+  /**
+   * Convert USDC amount to basis points
+   * Example: 105.00 USDC → 10500 BP
+   */
+  usdcToBasisPoints(usdc: number): bigint {
+    return BigInt(Math.floor(usdc * 100));
+  }
+
+  /**
+   * Check if price is stale (> 24 hours old)
+   */
+  isPriceStale(timestamp: bigint): boolean {
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const ageInSeconds = now - timestamp;
+    const TWENTY_FOUR_HOURS = BigInt(86400);
+    return ageInSeconds > TWENTY_FOUR_HOURS;
+  }
+
+  /**
+   * Get price age in seconds
+   */
+  getPriceAge(timestamp: bigint): number {
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    return Number(now - timestamp);
   }
 }

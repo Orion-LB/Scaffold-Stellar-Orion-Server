@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowDown, ArrowRight, Wallet, TrendingUp, Shield, RefreshCw, Info, Lock, Vote, Zap } from "lucide-react";
 import grow from "@/assets/growth.png";
+import { useContractServices } from "@/hooks/useContractServices";
+import { toast } from "sonner";
+import { CONTRACT_ADDRESSES } from "@/services/contracts";
 
 const StakeSection = () => {
   const [selectedVault, setSelectedVault] = useState("alexVault");
@@ -11,42 +14,238 @@ const StakeSection = () => {
   const [loading, setLoading] = useState(false);
   const [isStakeMode, setIsStakeMode] = useState(true);
 
-  // Mock data - will be replaced with real contract data
+  // Real contract balances
+  const [rwaBalance, setRwaBalance] = useState<bigint>(BigInt(0));
+  const [stRwaBalance, setStRwaBalance] = useState<bigint>(BigInt(0));
+  const [claimableYield, setClaimableYield] = useState<bigint>(BigInt(0));
+
+  const {
+    isConnected,
+    address,
+    rwaService,
+    stRwaService,
+    vaultService,
+    usdcService,
+  } = useContractServices();
+
+  // Load user balances
+  useEffect(() => {
+    if (!isConnected || !address) return;
+
+    const loadBalances = async () => {
+      try {
+        const [rwa, stRwa, yield_amount] = await Promise.all([
+          rwaService.balance(address),
+          stRwaService.balance(address),
+          vaultService.claimable_yield(address).catch(() => BigInt(0)),
+        ]);
+
+        setRwaBalance(rwa);
+        setStRwaBalance(stRwa);
+        setClaimableYield(yield_amount);
+      } catch (error) {
+        console.error("Failed to load balances:", error);
+      }
+    };
+
+    loadBalances();
+    const interval = setInterval(loadBalances, 10000);
+    return () => clearInterval(interval);
+  }, [isConnected, address, rwaService, stRwaService, vaultService]);
+
+  const formatBalance = (balance: bigint, decimals: number = 18) => {
+    return (Number(balance) / Math.pow(10, decimals)).toFixed(2);
+  };
+
+  // Mock data for UI - Keep the original vaults structure
   const vaults = [
     { id: "alexVault", name: "AlexRWA", emoji: "🏦"},
     { id: "ethVault", name: "EthRWA", emoji: "⚡"},
     { id: "btcVault", name: "BtcRWA", emoji: "₿"}
   ];
 
-  const userBalances = {
-    alexRWA: "1,250.00",
-    orionAlexRWA: "850.50"
+  // NOTE: Currently only one vault is deployed. Multiple vaults will be added in backend later.
+  // For now, all vaults map to the same RWA token contract
+
+  // ============================================================================
+  // BACKEND REQUIRED: mint_rwa_tokens() function
+  // ============================================================================
+  // Function signature needed in RWA Token Contract:
+  // pub fn mint_rwa_tokens(env: Env, to: Address, amount: i128) -> Result<(), Error>
+  //
+  // This function should:
+  // 1. Mint RWA tokens to the user's address
+  // 2. Automatically whitelist the user (allow_user) so they can transfer tokens
+  // 3. For hackathon: Allow anyone to call this (no admin check)
+  // 4. In production: Add rate limiting or faucet logic
+  // ============================================================================
+  const handleGetMockRWA = async () => {
+    if (!isConnected || !address) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // TODO: Replace with actual mint_rwa_tokens contract call when available
+      // const mintAmount = BigInt(1000 * 1e18); // 1000 RWA tokens
+      // const result = await rwaService.mint_rwa_tokens(address, mintAmount);
+
+      toast.info("RWA Token minting function not yet implemented in backend. Contact team to get test tokens.");
+
+      // For now, just refresh balances in case tokens were added manually
+      const rwa = await rwaService.balance(address);
+      setRwaBalance(rwa);
+    } catch (error: any) {
+      console.error("Minting failed:", error);
+      toast.error(error.message || "Minting failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleStake = async () => {
+    if (!isConnected || !address) {
+      toast.error("Please connect your wallet");
+      return;
+    }
+
+    const amount = BigInt(Math.floor(parseFloat(stakeAmount || "0") * 1e18));
+    if (amount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
+    if (amount > rwaBalance) {
+      toast.error("Insufficient RWA balance");
+      return;
+    }
+
     setLoading(true);
-    // Mock staking logic
-    setTimeout(() => {
+    try {
+      // Step 1: Approve RWA tokens
+      toast.info("Step 1/2: Approving RWA tokens...");
+      const approveResult = await rwaService.approve(
+        address,
+        CONTRACT_ADDRESSES.RWA_VAULT_A,
+        amount
+      );
+
+      if (!approveResult.success) {
+        toast.error("Failed to approve tokens");
+        return;
+      }
+
+      // ============================================================================
+      // BACKEND REQUIRED: Auto-whitelist on stake
+      // ============================================================================
+      // The stake() function in Vault contract should:
+      // 1. Check if user is whitelisted in RWA token
+      // 2. If not whitelisted, call rwa_token.allow_user(user) internally
+      // 3. Then proceed with the stake
+      // This way users don't need manual admin approval
+      // ============================================================================
+
+      // Step 2: Stake
+      toast.info("Step 2/2: Staking RWA tokens...");
+      const result = await vaultService.stake(address, amount);
+
+      if (result.success) {
+        toast.success(`Successfully staked ${formatBalance(amount)} RWA!`);
+        setStakeAmount("");
+
+        // Refresh balances
+        const [rwa, stRwa] = await Promise.all([
+          rwaService.balance(address),
+          stRwaService.balance(address),
+        ]);
+        setRwaBalance(rwa);
+        setStRwaBalance(stRwa);
+      } else {
+        toast.error("Staking failed");
+      }
+    } catch (error: any) {
+      console.error("Staking failed:", error);
+      toast.error(error.message || "Staking failed");
+    } finally {
       setLoading(false);
-      setStakeAmount("");
-    }, 2000);
+    }
   };
 
   const handleUnstake = async () => {
+    if (!isConnected || !address) {
+      toast.error("Please connect your wallet");
+      return;
+    }
+
+    const amount = BigInt(Math.floor(parseFloat(unstakeAmount || "0") * 1e18));
+    if (amount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
+    if (amount > stRwaBalance) {
+      toast.error("Insufficient stRWA balance");
+      return;
+    }
+
     setLoading(true);
-    // Mock unstaking logic
-    setTimeout(() => {
+    try {
+      const result = await vaultService.unstake(address, amount);
+
+      if (result.success) {
+        toast.success(`Successfully unstaked ${formatBalance(amount)} stRWA!`);
+        setUnstakeAmount("");
+
+        // Refresh balances
+        const [rwa, stRwa] = await Promise.all([
+          rwaService.balance(address),
+          stRwaService.balance(address),
+        ]);
+        setRwaBalance(rwa);
+        setStRwaBalance(stRwa);
+      } else {
+        toast.error("Unstaking failed");
+      }
+    } catch (error: any) {
+      console.error("Unstaking failed:", error);
+      toast.error(error.message || "Unstaking failed");
+    } finally {
       setLoading(false);
-      setUnstakeAmount("");
-    }, 2000);
+    }
   };
 
-  const handleGetMockRWA = async () => {
+  // Claim yield function
+  const handleClaimYield = async () => {
+    if (!isConnected || !address) {
+      toast.error("Please connect your wallet");
+      return;
+    }
+
+    if (claimableYield <= 0) {
+      toast.error("No yield available to claim");
+      return;
+    }
+
     setLoading(true);
-    // Mock RWA minting
-    setTimeout(() => {
+    try {
+      const result = await vaultService.claim_yield(address);
+
+      if (result.success) {
+        toast.success(`Successfully claimed ${usdcService.fromContractUnits(claimableYield)} USDC yield!`);
+
+        // Refresh claimable yield
+        const yield_amount = await vaultService.claimable_yield(address).catch(() => BigInt(0));
+        setClaimableYield(yield_amount);
+      } else {
+        toast.error("Claim failed");
+      }
+    } catch (error: any) {
+      console.error("Claim failed:", error);
+      toast.error(error.message || "Claim failed");
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   const calculateReceiveAmount = (amount: string) => {
@@ -186,8 +385,8 @@ const StakeSection = () => {
   );
 
   return (
-    <div className="w-full h-full overflow-hidden px-4 py-3">
-      <div className="h-full max-w-5xl mx-auto px-4 py-3  flex-col">
+<div className="h-full relative overflow-hidden">
+      <div className="w-full min-h-full mx-auto px-4 py-3  flex-col">
         {/* Main Title Section - Compact */}
         <div className="text-center mb-3">
           <h1 className="text-2xl font-bold text-gray-900 mb-1 font-antic">
@@ -197,7 +396,7 @@ const StakeSection = () => {
             Stake your RWA tokens and grow with Orion
           </p>
         </div>
- <div className="px-10 py-3">
+ <div className="w-full h-[1000vh] px-10 py-3">
   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3 p-1">
           {/* Card 1: Total RWA Value Locked */}
           <div className="bg-white rounded-lg shadow-md p-3 border border-gray-100 hover:shadow-lg transition-shadow">
@@ -213,7 +412,7 @@ const StakeSection = () => {
           {/* Card 2: Estimated APY with Decorative SVG */}
           <div className="bg-white rounded-lg shadow-md p-3 border border-gray-100 hover:shadow-lg transition-shadow relative overflow-hidden">
             {/* Decorative Stack SVG - positioned on the right */}
-            <div className="absolute left-60 top-1/2 transform -translate-y-1/2 opacity-100 pointer-events-none">
+            <div className="absolute right-1 top-1/2 transform -translate-y-1/2 opacity-100 pointer-events-none">
               <DecorativeStack />
             </div>
 
@@ -233,8 +432,17 @@ const StakeSection = () => {
               <span className="font-antic uppercase tracking-wide">My Staked RWA</span>
             </div>
             <div className="text-xl font-bold text-gray-900 font-antic">
-              {userBalances.orionAlexRWA}
+              {formatBalance(stRwaBalance)} stRWA
             </div>
+            {claimableYield > 0 && (
+              <Button
+                onClick={handleClaimYield}
+                disabled={loading}
+                className="mt-2 bg-green-600 hover:bg-green-700 text-white text-[9px] px-2 py-1 rounded-md font-antic"
+              >
+                Claim {usdcService.fromContractUnits(claimableYield)} USDC
+              </Button>
+            )}
           </div>
         </div>
 
@@ -364,7 +572,7 @@ const StakeSection = () => {
                           </Select>
 
                           <Button
-                            onClick={() => setStakeAmount(userBalances.alexRWA.replace(",", ""))}
+                            onClick={() => setStakeAmount(formatBalance(rwaBalance))}
                             className="bg-primary hover:bg-primary/90 text-white text-[9px] px-1.5 py-0 h-3.5 rounded-md font-antic font-bold tracking-wide"
                           >
                             MAX
@@ -374,7 +582,7 @@ const StakeSection = () => {
 
                       <div className="flex items-center justify-end gap-0.5 text-gray-500 text-[9px]">
                         <Wallet className="w-2 h-2" />
-                        <span className="font-antic font-medium">Balance: {userBalances.alexRWA}</span>
+                        <span className="font-antic font-medium">Balance: {formatBalance(rwaBalance)} RWA</span>
                       </div>
                     </div>
 
@@ -446,7 +654,7 @@ const StakeSection = () => {
                           </div>
 
                           <Button
-                            onClick={() => setUnstakeAmount(userBalances.orionAlexRWA)}
+                            onClick={() => setUnstakeAmount(formatBalance(stRwaBalance))}
                             className="bg-primary hover:bg-primary/90 text-white text-[9px] px-1.5 py-0 h-3.5 rounded-md font-antic font-bold tracking-wide"
                           >
                             MAX
@@ -456,7 +664,7 @@ const StakeSection = () => {
 
                       <div className="flex items-center justify-end gap-0.5 text-gray-500 text-[9px]">
                         <Shield className="w-2 h-2" />
-                        <span className="font-antic font-medium">Staked: {userBalances.orionAlexRWA}</span>
+                        <span className="font-antic font-medium">Staked: {formatBalance(stRwaBalance)} stRWA</span>
                       </div>
                     </div>
 
@@ -489,10 +697,10 @@ const StakeSection = () => {
                   <Button
                     onClick={handleUnstake}
                     disabled={!unstakeAmount || loading}
-                    className="w-full bg-primary hover:bg-primary/90 text-white font-antic font-bold py-2 text-xs rounded-[16px] flex items-center justify-center gap-1.5 tracking-wide mt-1.5"
+                    className="w-full bg-primary hover:bg-primary/90 text-white font-antic font-bold py-2 text-xs rounded-[16px] flex items-center justify-center gap-1.5 tracking-wide mt-4"
                   >
                     {loading ? (
-                      <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                      <RefreshCw className="w-2.5 h-2.5 animate-spin " />
                     ) : (
                       <>
                         Unstake Assets

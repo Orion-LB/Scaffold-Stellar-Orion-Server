@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import orion from "../assets/Orion.png";
-import "./Navbar.css";
+import "../styles/Navbar.css";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);

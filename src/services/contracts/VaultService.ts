@@ -9,73 +9,110 @@ export interface Vault {
   exchangeRate: number;
 }
 
+/**
+ * RWA Vault Service
+ * Contract for staking RWA tokens to receive stRWA tokens
+ * Handles yield distribution and borrower management
+ */
 export class VaultService extends ContractService {
   constructor(options: ContractClientOptions) {
     super(options);
   }
-  
-  // Queries (Read-Only)
-  async getAvailableVaults(): Promise<Vault[]> {
-    const result = await this.queryContract('getAvailableVaults');
-    return result;
-  }
-  
-  async getUserStakedBalance(userAddress: string): Promise<bigint> {
-    const result = await this.queryContract('get_user_staked_balance', { user: userAddress });
+
+  // ============ Read Operations ============
+
+  /**
+   * Get claimable yield for a user in USDC (7 decimals)
+   * Formula: (total_yield_pool × user_strwa_balance) / total_strwa_supply
+   */
+  async claimable_yield(userAddress: string): Promise<bigint> {
+    const result = await this.queryContract('claimable_yield', { user: userAddress });
     return BigInt(result || '0');
   }
-  
-  async getClaimableYield(userAddress: string): Promise<bigint> {
-    const result = await this.queryContract('get_claimable_yield', { user: userAddress });
-    return BigInt(result || '0');
-  }
-  
-  async getExchangeRate(): Promise<number> {
-    const result = await this.queryContract('get_exchange_rate');
-    return parseFloat(result || '0');
-  }
-  
-  async getTotalStaked(): Promise<bigint> {
-    const result = await this.queryContract('get_total_staked');
-    return BigInt(result || '0');
-  }
-  
-  // Transactions (Write)
+
+  // ============ Write Operations ============
+
+  /**
+   * Stake RWA tokens to receive stRWA (1:1 ratio)
+   * Prerequisites:
+   * - User must approve vault to spend RWA tokens first
+   * - User must be whitelisted for RWA transfers
+   */
   async stake(userAddress: string, amount: bigint, wallet?: StellarWalletProvider): Promise<TransactionResult> {
     return await this.invokeContract('stake', { user: userAddress, amount: amount.toString() }, wallet);
   }
-  
+
+  /**
+   * Unstake stRWA tokens to receive RWA (1:1 ratio)
+   * Restrictions:
+   * - Borrowers: Cannot unstake during first 20% of loan period
+   * - Borrowers with outstanding loans: 5% foreclosure fee applied
+   */
   async unstake(userAddress: string, amount: bigint, wallet?: StellarWalletProvider): Promise<TransactionResult> {
     return await this.invokeContract('unstake', { user: userAddress, amount: amount.toString() }, wallet);
   }
-  
-  async claimYield(userAddress: string, wallet?: StellarWalletProvider): Promise<TransactionResult> {
+
+  /**
+   * Claim accumulated yield in USDC
+   * Returns the amount claimed
+   */
+  async claim_yield(userAddress: string, wallet?: StellarWalletProvider): Promise<TransactionResult> {
     return await this.invokeContract('claim_yield', { user: userAddress }, wallet);
   }
-  
-  // Admin (for demo/testing)
-  async fundYield(amount: bigint, wallet?: StellarWalletProvider): Promise<TransactionResult> {
-    return await this.invokeContract('fund_yield', { amount: amount.toString() }, wallet);
+
+  // ============ Admin Operations ============
+
+  /**
+   * Admin deposits USDC to yield pool
+   * Prerequisites: Admin must approve vault to spend USDC first
+   */
+  async admin_fund_yield(amount: bigint, wallet?: StellarWalletProvider): Promise<TransactionResult> {
+    return await this.invokeContract('admin_fund_yield', { amount: amount.toString() }, wallet);
   }
-  
-  protected getMockQueryResult(method: string, params: Record<string, any>): any {
-    switch (method) {
-      case 'get_available_vaults':
-        return [
-          { id: 'alexVault', name: 'AlexRWA Vault', apy: '8.5%', tvl: '$2.4M', totalStaked: BigInt('2400000000000000000000000'), exchangeRate: 0.95 },
-          { id: 'ethVault', name: 'EthRWA Vault', apy: '7.2%', tvl: '$1.8M', totalStaked: BigInt('1800000000000000000000000'), exchangeRate: 0.92 },
-          { id: 'btcVault', name: 'BtcRWA Vault', apy: '6.8%', tvl: '$3.1M', totalStaked: BigInt('3100000000000000000000000'), exchangeRate: 0.88 }
-        ];
-      case 'get_user_staked_balance':
-        return BigInt('850500000000000000000'); // 850.5 tokens with 18 decimals
-      case 'get_claimable_yield':
-        return BigInt('425500000000000000000'); // 425.5 tokens with 18 decimals
-      case 'get_exchange_rate':
-        return 0.95;
-      case 'get_total_staked':
-        return BigInt('7300000000000000000000000'); // 7.3M tokens
-      default:
-        return null;
-    }
+
+  /**
+   * Set USDC token address (one-time only)
+   * Only callable once by admin
+   */
+  async set_usdc_address(usdcAddress: string, wallet?: StellarWalletProvider): Promise<TransactionResult> {
+    return await this.invokeContract('set_usdc_address', { usdc: usdcAddress }, wallet);
+  }
+
+  /**
+   * Set lending pool address (one-time only)
+   * Only callable once by admin
+   */
+  async set_lending_pool(lendingPoolAddress: string, wallet?: StellarWalletProvider): Promise<TransactionResult> {
+    return await this.invokeContract('set_lending_pool', { lending_pool: lendingPoolAddress }, wallet);
+  }
+
+  // ============ Helper Methods ============
+
+  /**
+   * Convert RWA amount to contract units (18 decimals)
+   */
+  toContractUnits(rwaAmount: number): bigint {
+    return BigInt(Math.floor(rwaAmount * 1e18));
+  }
+
+  /**
+   * Convert contract units to RWA amount
+   */
+  fromContractUnits(contractUnits: bigint): number {
+    return Number(contractUnits) / 1e18;
+  }
+
+  /**
+   * Convert USDC amount to contract units (7 decimals)
+   */
+  usdcToContractUnits(usdcAmount: number): bigint {
+    return BigInt(Math.floor(usdcAmount * 10_000_000));
+  }
+
+  /**
+   * Convert USDC contract units to amount
+   */
+  usdcFromContractUnits(contractUnits: bigint): number {
+    return Number(contractUnits) / 10_000_000;
   }
 }
