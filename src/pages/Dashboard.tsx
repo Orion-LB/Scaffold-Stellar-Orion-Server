@@ -4,10 +4,11 @@ import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import StakeSection from "@/components/dashboard/StakeSection";
 import BorrowSection from "@/components/dashboard/BorrowSection";
 import ProfileSection from "@/components/dashboard/ProfileSection";
+import TransactionsSection from "@/components/dashboard/TransactionsSection";
 import HeroBackground from "@/components/HeroBackground";
 
 const Dashboard = () => {
-  const [activeSection, setActiveSection] = useState<'stake' | 'borrow' | 'profile'>('stake');
+  const [activeSection, setActiveSection] = useState<'stake' | 'borrow' | 'profile' | 'transactions'>('stake');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const renderActiveSection = () => {
@@ -18,6 +19,8 @@ const Dashboard = () => {
         return <BorrowSection />;
       case 'profile':
         return <ProfileSection />;
+      case 'transactions':
+        return <TransactionsSection />;
       default:
         return <StakeSection />;
     }

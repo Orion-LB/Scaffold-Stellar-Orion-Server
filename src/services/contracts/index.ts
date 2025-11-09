@@ -7,6 +7,9 @@ export { OracleService } from './OracleService';
 export { USDCService } from './USDCService';
 export { StakedRWAService } from './StakedRWAService';
 
+// Alias for multi-asset compatibility
+export { StakedRWAService as StRWAService } from './StakedRWAService';
+
 // Types
 export type {
   TransactionResult,
@@ -108,6 +111,133 @@ export const createUSDCService = (wallet?: StellarWalletProvider, network: keyof
 export const createStakedRWAService = (wallet?: StellarWalletProvider, network: keyof typeof NETWORK_CONFIG = 'TESTNET') => {
   return new StakedRWAService({
     contractId: CONTRACT_ADDRESSES.STAKED_RWA_A,
+    networkPassphrase: NETWORK_CONFIG[network].networkPassphrase,
+    rpcUrl: NETWORK_CONFIG[network].rpcUrl,
+    wallet,
+  });
+};
+
+// ============================================================================
+// TEMPORARY MOCK MULTI-ASSET CONFIGURATION
+// TODO: Replace with actual multi-asset contracts when backend is deployed
+// See: BACKEND_FINAL_REQUIREMENTS.md for full multi-asset architecture
+// ============================================================================
+
+/**
+ * Asset types supported by the platform
+ * TEMPORARY: All types currently map to the same single deployed contracts
+ */
+export enum AssetType {
+  INVOICES = 'invoices',
+  TBILLS = 'tbills',
+  REALESTATE = 'realestate'
+}
+
+/**
+ * Multi-asset contract configuration
+ * TEMPORARY: All asset types use the same single deployed contract addresses
+ * This allows the UI to work with multi-asset structure before backend deployment
+ */
+export const ASSET_CONTRACTS = {
+  [AssetType.INVOICES]: {
+    name: 'Invoice RWA',
+    displayName: 'Invoice Financing',
+    shortName: 'Invoices',
+    symbol: 'iRWA',
+    emoji: '📄',
+    rwa: CONTRACT_ADDRESSES.MOCK_RWA_A,
+    stRwa: CONTRACT_ADDRESSES.STAKED_RWA_A,
+    vault: CONTRACT_ADDRESSES.RWA_VAULT_A,
+    mockPrice: 1.05, // Mock oracle price
+    baseAPY: 8.5, // Mock APY
+  },
+  [AssetType.TBILLS]: {
+    name: 'T-Bills Vault',
+    displayName: 'Treasury Bills',
+    shortName: 'T-Bills',
+    symbol: 'tRWA',
+    emoji: '🏦',
+    rwa: CONTRACT_ADDRESSES.MOCK_RWA_A, // TEMP: Same contract
+    stRwa: CONTRACT_ADDRESSES.STAKED_RWA_A, // TEMP: Same contract
+    vault: CONTRACT_ADDRESSES.RWA_VAULT_A, // TEMP: Same contract
+    mockPrice: 1.02,
+    baseAPY: 5.2,
+  },
+  [AssetType.REALESTATE]: {
+    name: 'Real Estate',
+    displayName: 'Real Estate',
+    shortName: 'Real Estate',
+    symbol: 'rRWA',
+    emoji: '🏢',
+    rwa: CONTRACT_ADDRESSES.MOCK_RWA_A, // TEMP: Same contract
+    stRwa: CONTRACT_ADDRESSES.STAKED_RWA_A, // TEMP: Same contract
+    vault: CONTRACT_ADDRESSES.RWA_VAULT_A, // TEMP: Same contract
+    mockPrice: 1.08,
+    baseAPY: 12.3,
+  },
+};
+
+/**
+ * Get all supported asset types
+ * @returns Array of all AssetType values
+ */
+export const getAllAssetTypes = (): AssetType[] => {
+  return [AssetType.INVOICES, AssetType.TBILLS, AssetType.REALESTATE];
+};
+
+/**
+ * Get configuration for a specific asset type
+ * @param assetType - The asset type to get config for
+ * @returns Asset configuration object
+ */
+export const getAssetConfig = (assetType: AssetType) => {
+  return ASSET_CONTRACTS[assetType];
+};
+
+/**
+ * Get asset type from contract address
+ * TEMPORARY: Since all assets use same contracts, returns first match
+ * @param contractAddress - The contract address to look up
+ * @returns AssetType or undefined
+ */
+export const getAssetTypeFromAddress = (contractAddress: string): AssetType | undefined => {
+  for (const [assetType, config] of Object.entries(ASSET_CONTRACTS)) {
+    if (
+      config.rwa === contractAddress ||
+      config.stRwa === contractAddress ||
+      config.vault === contractAddress
+    ) {
+      return assetType as AssetType;
+    }
+  }
+  return undefined;
+};
+
+/**
+ * Create service instances from contract addresses
+ * These helpers allow ProfileSection to instantiate services with just a contract ID
+ */
+export const createMockRWAServiceFromAddress = (contractId: string, wallet?: StellarWalletProvider, network: keyof typeof NETWORK_CONFIG = 'TESTNET') => {
+  return new MockRWAService({
+    contractId,
+    networkPassphrase: NETWORK_CONFIG[network].networkPassphrase,
+    rpcUrl: NETWORK_CONFIG[network].rpcUrl,
+    wallet,
+  });
+};
+
+export const createStRWAServiceFromAddress = (contractId: string, wallet?: StellarWalletProvider, network: keyof typeof NETWORK_CONFIG = 'TESTNET') => {
+  return new StakedRWAService({
+    contractId,
+    networkPassphrase: NETWORK_CONFIG[network].networkPassphrase,
+    rpcUrl: NETWORK_CONFIG[network].rpcUrl,
+    wallet,
+  });
+};
+
+export const createVaultServiceFromAddress = (contractId: string, wallet?: StellarWalletProvider, network: keyof typeof NETWORK_CONFIG = 'TESTNET') => {
+  return new VaultService({
+    contractId,
     networkPassphrase: NETWORK_CONFIG[network].networkPassphrase,
     rpcUrl: NETWORK_CONFIG[network].rpcUrl,
     wallet,

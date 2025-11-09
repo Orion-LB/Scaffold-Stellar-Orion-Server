@@ -53,35 +53,36 @@ export const useOracleService = () => {
 };
 
 // Vault Hooks
-export const useAvailableVaults = () => {
-  const vaultService = useVaultService();
-  
-  return useQuery({
-    queryKey: ['vaults', 'available'],
-    queryFn: () => vaultService.getAvailableVaults(),
-    staleTime: 30000, // 30 seconds
-    refetchInterval: 60000, // 1 minute
-  });
-};
+// TODO: These hooks use placeholder method names. Update when backend is ready.
+// export const useAvailableVaults = () => {
+//   const vaultService = useVaultService();
+//
+//   return useQuery({
+//     queryKey: ['vaults', 'available'],
+//     queryFn: () => vaultService.getAvailableVaults(),
+//     staleTime: 30000, // 30 seconds
+//     refetchInterval: 60000, // 1 minute
+//   });
+// };
 
-export const useUserStakedBalance = (userAddress?: string) => {
-  const vaultService = useVaultService();
-  
-  return useQuery({
-    queryKey: ['vault', 'stakedBalance', userAddress],
-    queryFn: () => userAddress ? vaultService.getUserStakedBalance(userAddress) : Promise.resolve(BigInt(0)),
-    enabled: Boolean(userAddress),
-    staleTime: 10000, // 10 seconds
-    refetchInterval: 15000, // 15 seconds
-  });
-};
+// export const useUserStakedBalance = (userAddress?: string) => {
+//   const vaultService = useVaultService();
+//
+//   return useQuery({
+//     queryKey: ['vault', 'stakedBalance', userAddress],
+//     queryFn: () => userAddress ? vaultService.getUserStakedBalance(userAddress) : Promise.resolve(BigInt(0)),
+//     enabled: Boolean(userAddress),
+//     staleTime: 10000, // 10 seconds
+//     refetchInterval: 15000, // 15 seconds
+//   });
+// };
 
 export const useClaimableYield = (userAddress?: string) => {
   const vaultService = useVaultService();
-  
+
   return useQuery({
     queryKey: ['vault', 'claimableYield', userAddress],
-    queryFn: () => userAddress ? vaultService.getClaimableYield(userAddress) : Promise.resolve(BigInt(0)),
+    queryFn: () => userAddress ? vaultService.claimable_yield(userAddress) : Promise.resolve(BigInt(0)),
     enabled: Boolean(userAddress),
     staleTime: 5000, // 5 seconds
     refetchInterval: 10000, // 10 seconds
@@ -124,84 +125,86 @@ export const useUnstakeMutation = () => {
 };
 
 // Lending Pool Hooks
-export const useUserLoans = (userAddress?: string) => {
-  const lendingService = useLendingPoolService();
-  
-  return useQuery({
-    queryKey: ['lending', 'userLoans', userAddress],
-    queryFn: () => userAddress ? lendingService.getUserLoans(userAddress) : Promise.resolve([]),
-    enabled: Boolean(userAddress),
-    staleTime: 10000,
-    refetchInterval: 15000,
-  });
-};
+// TODO: These hooks use placeholder method names. Update when backend is ready.
+// export const useUserLoans = (userAddress?: string) => {
+//   const lendingService = useLendingPoolService();
+//
+//   return useQuery({
+//     queryKey: ['lending', 'userLoans', userAddress],
+//     queryFn: () => userAddress ? lendingService.getUserLoans(userAddress) : Promise.resolve([]),
+//     enabled: Boolean(userAddress),
+//     staleTime: 10000,
+//     refetchInterval: 15000,
+//   });
+// };
 
-export const useHealthFactor = (userAddress?: string) => {
-  const lendingService = useLendingPoolService();
-  
-  return useQuery({
-    queryKey: ['lending', 'healthFactor', userAddress],
-    queryFn: () => userAddress ? lendingService.getHealthFactor(userAddress) : Promise.resolve(0),
-    enabled: Boolean(userAddress),
-    staleTime: 5000,
-    refetchInterval: 10000,
-  });
-};
+// export const useHealthFactor = (userAddress?: string) => {
+//   const lendingService = useLendingPoolService();
+//
+//   return useQuery({
+//     queryKey: ['lending', 'healthFactor', userAddress],
+//     queryFn: () => userAddress ? lendingService.getHealthFactor(userAddress) : Promise.resolve(0),
+//     enabled: Boolean(userAddress),
+//     staleTime: 5000,
+//     refetchInterval: 10000,
+//   });
+// };
 
-export const useBorrowMutation = () => {
-  const lendingService = useLendingPoolService();
-  const queryClient = useQueryClient();
-  const wallet = useWallet();
-  
-  return useMutation({
-    mutationFn: async ({ asset, amount }: { asset: string; amount: bigint }) => {
-      if (!wallet.address) throw new Error('Wallet not connected');
-      return lendingService.borrow(wallet.address, asset, amount);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lending'] });
-      queryClient.invalidateQueries({ queryKey: ['user', 'balances'] });
-    },
-  });
-};
+// export const useBorrowMutation = () => {
+//   const lendingService = useLendingPoolService();
+//   const queryClient = useQueryClient();
+//   const wallet = useWallet();
+//
+//   return useMutation({
+//     mutationFn: async ({ asset, amount }: { asset: string; amount: bigint }) => {
+//       if (!wallet.address) throw new Error('Wallet not connected');
+//       return lendingService.borrow(wallet.address, asset, amount);
+//     },
+//     onSuccess: () => {
+//       queryClient.invalidateQueries({ queryKey: ['lending'] });
+//       queryClient.invalidateQueries({ queryKey: ['user', 'balances'] });
+//     },
+//   });
+// };
 
 // Mock RWA Hooks
-export const useUserBalance = (userAddress?: string) => {
-  const mockRWAService = useMockRWAService();
-  
-  return useQuery({
-    queryKey: ['mockRWA', 'balance', userAddress],
-    queryFn: () => userAddress ? mockRWAService.getUserBalance(userAddress) : Promise.resolve(BigInt(0)),
-    enabled: Boolean(userAddress),
-    staleTime: 10000,
-    refetchInterval: 30000,
-  });
-};
+// TODO: These hooks use placeholder method names. Update when backend is ready.
+// export const useUserBalance = (userAddress?: string) => {
+//   const mockRWAService = useMockRWAService();
+//
+//   return useQuery({
+//     queryKey: ['mockRWA', 'balance', userAddress],
+//     queryFn: () => userAddress ? mockRWAService.balance(userAddress) : Promise.resolve(BigInt(0)),
+//     enabled: Boolean(userAddress),
+//     staleTime: 10000,
+//     refetchInterval: 30000,
+//   });
+// };
 
-export const useMintMockRWA = () => {
-  const mockRWAService = useMockRWAService();
-  const queryClient = useQueryClient();
-  const wallet = useWallet();
-  
-  return useMutation({
-    mutationFn: async ({ amount }: { amount: bigint }) => {
-      if (!wallet.address) throw new Error('Wallet not connected');
-      return mockRWAService.mintMockRWA(wallet.address, amount);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mockRWA'] });
-      queryClient.invalidateQueries({ queryKey: ['user', 'balances'] });
-    },
-  });
-};
+// export const useMintMockRWA = () => {
+//   const mockRWAService = useMockRWAService();
+//   const queryClient = useQueryClient();
+//   const wallet = useWallet();
+//
+//   return useMutation({
+//     mutationFn: async ({ amount }: { amount: bigint }) => {
+//       if (!wallet.address) throw new Error('Wallet not connected');
+//       return mockRWAService.mint(wallet.address, amount);
+//     },
+//     onSuccess: () => {
+//       queryClient.invalidateQueries({ queryKey: ['mockRWA'] });
+//       queryClient.invalidateQueries({ queryKey: ['user', 'balances'] });
+//     },
+//   });
+// };
 
 // Oracle Hooks
 export const useAssetPrice = (assetAddress: string) => {
   const oracleService = useOracleService();
-  
+
   return useQuery({
     queryKey: ['oracle', 'price', assetAddress],
-    queryFn: () => oracleService.getPrice(assetAddress),
+    queryFn: () => oracleService.get_price(assetAddress),
     staleTime: 5000,
     refetchInterval: 10000, // Price updates every 10 seconds
     enabled: Boolean(assetAddress),
@@ -210,10 +213,10 @@ export const useAssetPrice = (assetAddress: string) => {
 
 export const usePriceData = (assetAddress: string) => {
   const oracleService = useOracleService();
-  
+
   return useQuery({
     queryKey: ['oracle', 'priceData', assetAddress],
-    queryFn: () => oracleService.getPriceData(assetAddress),
+    queryFn: () => oracleService.get_price_data(assetAddress),
     staleTime: 5000,
     refetchInterval: 10000,
     enabled: Boolean(assetAddress),

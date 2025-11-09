@@ -1,18 +1,18 @@
-import { Layers, CreditCard, User, ChevronLeft, ChevronRight } from "lucide-react";
+import { Layers, CreditCard, User, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface DashboardSidebarProps {
-  activeSection: 'stake' | 'borrow' | 'profile';
-  setActiveSection: (section: 'stake' | 'borrow' | 'profile') => void;
+  activeSection: 'stake' | 'borrow' | 'profile' | 'transactions';
+  setActiveSection: (section: 'stake' | 'borrow' | 'profile' | 'transactions') => void;
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
 }
 
-const DashboardSidebar = ({ 
-  activeSection, 
-  setActiveSection, 
-  collapsed, 
-  setCollapsed 
+const DashboardSidebar = ({
+  activeSection,
+  setActiveSection,
+  collapsed,
+  setCollapsed
 }: DashboardSidebarProps) => {
   const navItems = [
     {
@@ -29,6 +29,11 @@ const DashboardSidebar = ({
       id: 'profile' as const,
       label: 'Profile',
       icon: User
+    },
+    {
+      id: 'transactions' as const,
+      label: 'Transactions',
+      icon: FileText
     }
   ];
 
