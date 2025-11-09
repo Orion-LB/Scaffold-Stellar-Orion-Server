@@ -761,7 +761,14 @@ dependencies = [
 name = "lending-pool"
 version = "0.0.1"
 dependencies = [
+ "mock-rwa-token",
+ "rwa-vault",
  "soroban-sdk",
+ "stellar-access",
+ "stellar-macros",
+ "stellar-tokens",
+ "strwa-token",
+ "usdc-mock",
 ]
 
 [[package]]
