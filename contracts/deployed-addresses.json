@@ -1,0 +1,13 @@
+{
+  "network": "testnet",
+  "contracts": {
+    "rwa_vault": "REPLACE_WITH_VAULT_CONTRACT_ID",
+    "lending_pool": "REPLACE_WITH_LENDING_POOL_CONTRACT_ID",
+    "oracle": "REPLACE_WITH_ORACLE_CONTRACT_ID",
+    "strwa_token": "REPLACE_WITH_STRWA_TOKEN_CONTRACT_ID",
+    "usdc_token": "REPLACE_WITH_USDC_TOKEN_CONTRACT_ID"
+  },
+  "deployed_at": "2025-11-09T08:30:00Z",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "rpc_url": "https://soroban-testnet.stellar.org:443"
+}
