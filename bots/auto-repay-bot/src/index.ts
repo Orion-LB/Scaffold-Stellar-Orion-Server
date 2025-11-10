@@ -12,7 +12,11 @@ const networkConfig: NetworkConfig = {
     process.env.STELLAR_RPC_URL || "https://soroban-testnet.stellar.org:443",
   botSecretKey: process.env.BOT_SECRET_KEY || "",
   networkPassphrase: process.env.STELLAR_NETWORK_PASSPHRASE,
-  vaultContractId: process.env.VAULT_CONTRACT_ID || "",
+  vaultContractIds: [
+    process.env.VAULT_INVOICES_ID || "",
+    process.env.VAULT_TBILLS_ID || "",
+    process.env.VAULT_REALESTATE_ID || "",
+  ].filter(Boolean),
   lendingPoolContractId: process.env.LENDING_POOL_CONTRACT_ID || "",
 };
 

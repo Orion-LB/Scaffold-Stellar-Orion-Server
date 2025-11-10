@@ -11,33 +11,37 @@ export interface DataSource {
 }
 
 export const DATA_SOURCES: Record<string, DataSource[]> = {
-  TBILL_TOKEN: [
+  STRWA_INVOICES: [
     {
-      name: "Franklin Templeton API",
-      type: "api",
-      url: "https://api.franklintempleton.com/tbill/price",
-      weight: 40,
+      name: "Mock Oracle - Invoices",
+      type: "custom",
+      url: "",
+      weight: 100,
       priority: 1,
       timeout: 5000,
       retries: 3,
     },
+  ],
+  STRWA_TBILLS: [
     {
-      name: "Chainlink RWA Feed",
-      type: "chainlink",
-      url: "https://rwa-oracle.chain.link/tbill",
-      weight: 30,
-      priority: 2,
+      name: "Mock Oracle - TBills",
+      type: "custom",
+      url: "",
+      weight: 100,
+      priority: 1,
       timeout: 5000,
       retries: 3,
     },
+  ],
+  STRWA_REALESTATE: [
     {
-      name: "Ondo Finance",
-      type: "api",
-      url: "https://api.ondo.finance/ousg/nav",
-      weight: 30,
-      priority: 3,
+      name: "Mock Oracle - Real Estate",
+      type: "custom",
+      url: "",
+      weight: 100,
+      priority: 1,
       timeout: 5000,
-      retries: 2,
+      retries: 3,
     },
   ],
 };

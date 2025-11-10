@@ -34,10 +34,10 @@ export class MockPriceFetcher extends PriceFetcher {
   }
 
   getName(): string {
-    return this.source.name;
+    return this.config.name;
   }
 
   getWeight(): number {
-    return this.source.weight;
+    return this.config.weight;
   }
 }

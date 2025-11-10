@@ -13,12 +13,12 @@ export interface BorrowerEligibility {
 
 export class EligibilityChecker {
   private lendingPool: Contract;
-  private vault: Contract;
+  private vaults: Contract[];
   private server: SorobanRpc.Server;
 
   constructor(private config: NetworkConfig) {
     this.lendingPool = new Contract(config.lendingPoolContractId);
-    this.vault = new Contract(config.vaultContractId);
+    this.vaults = config.vaultContractIds.map((id) => new Contract(id));
     this.server = new SorobanRpc.Server(config.rpcUrl);
   }
 

@@ -3,6 +3,6 @@ export interface NetworkConfig {
   rpcUrl: string;
   botSecretKey: string;
   networkPassphrase?: string;
-  vaultContractId: string;
+  vaultContractIds: string[]; // Changed to array for multi-asset support
   lendingPoolContractId: string;
 }

@@ -9,12 +9,28 @@ export interface ValidationConfig {
 }
 
 export const VALIDATION_CONFIG: Record<string, ValidationConfig> = {
-  TBILL_TOKEN: {
+  STRWA_INVOICES: {
+    maxDeviationPercent: 5.0,
+    minSources: 1,
+    maxStaleness: 3600, // 1 hour
+    minPrice: 0.9, // $0.90
+    maxPrice: 1.2, // $1.20
+    maxChangePercent: 5.0, // 5% max change per update
+  },
+  STRWA_TBILLS: {
     maxDeviationPercent: 3.0,
-    minSources: 2,
+    minSources: 1,
     maxStaleness: 3600, // 1 hour
     minPrice: 0.95, // $0.95 (T-Bills shouldn't drop below par)
     maxPrice: 1.1, // $1.10
     maxChangePercent: 2.0, // 2% max change per update
+  },
+  STRWA_REALESTATE: {
+    maxDeviationPercent: 10.0,
+    minSources: 1,
+    maxStaleness: 3600, // 1 hour
+    minPrice: 0.8, // $0.80
+    maxPrice: 1.5, // $1.50 (real estate can have more variance)
+    maxChangePercent: 10.0, // 10% max change per update
   },
 };

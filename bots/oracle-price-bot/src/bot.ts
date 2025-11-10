@@ -12,6 +12,7 @@ import { DATA_SOURCES, DataSource } from "./config/sources";
 import { VALIDATION_CONFIG, ValidationConfig } from "./config/validation";
 import { ChainlinkFetcher } from "./fetcher/chainlink";
 import { FranklinTempletonFetcher } from "./fetcher/franklin";
+import { MockPriceFetcher } from "./fetcher/mock";
 
 export interface BotConfig {
   dataSources: Record<string, DataSource[]>;
@@ -25,6 +26,8 @@ function createFetcher(source: DataSource): PriceFetcher {
   switch (source.type) {
     case "chainlink":
       return new ChainlinkFetcher(source);
+    case "custom":
+      return new MockPriceFetcher(source);
     case "api":
       if (source.name.includes("Franklin")) {
         return new FranklinTempletonFetcher(source);

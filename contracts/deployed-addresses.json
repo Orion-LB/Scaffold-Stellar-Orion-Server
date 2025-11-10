@@ -12,10 +12,12 @@
     "vault_tbills": "CAFQWK3D3QLMGSW2OL6HE3VTCLCKZKPWNTCTKBM5MFLKKZWIKTA6Z7DP",
     "vault_realestate": "CAGUJJGFK7N5WC4CEYS3CS6QH7RIAWBPZIMB6ELVHGBJ5KBA3R3WMWLI",
     "lending_pool": "CCW2TFZ7DWNMORNW3QVPYI5VYLNITMUMH42OKILXDLPN2J7HZQ545TWJ",
-    "mock_oracle": "CD5XYT6WXOB567JC3QZGJ7RWHWP4N3C4GJ5LX75WDWUGL7NPXFJJC6AZ"
+    "mock_oracle": "CDQ3C3T477QZFH6KQMQEA4HTIVIHOMN5YKDWHBDQT4EBO4MNXI5ZXKVX"
   },
   "deployed_at": "2025-11-10T10:24:56Z",
+  "oracle_updated_at": "2025-11-10T15:26:00Z",
   "deployer_address": "GAADPNKZXJEJ6DDDCSGZH3EIIUB2BUKOMH3RQSNZZEKA5GTXRDZBLO3D",
   "network_passphrase": "Test SDF Network ; September 2015",
-  "rpc_url": "https://soroban-testnet.stellar.org"
+  "rpc_url": "https://soroban-testnet.stellar.org",
+  "notes": "Oracle contract redeployed on 2025-11-10 with fixed get_price and set_price functions"
 }

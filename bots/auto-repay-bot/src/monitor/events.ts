@@ -11,11 +11,11 @@ export interface YieldFundedEvent {
 export class EventMonitor {
   private lastProcessedLedger: number = 0;
   private server: StellarSdk.SorobanRpc.Server;
-  private vaultContractId: string;
+  private vaultContractIds: string[];
 
   constructor(private config: NetworkConfig) {
     this.server = new StellarSdk.SorobanRpc.Server(config.rpcUrl);
-    this.vaultContractId = config.vaultContractId;
+    this.vaultContractIds = config.vaultContractIds;
   }
 
   async pollEvents(): Promise<YieldFundedEvent[]> {
