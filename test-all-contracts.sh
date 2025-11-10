@@ -1,254 +1,340 @@
 #!/bin/bash
 
-# Comprehensive Contract Function Testing Script
-# Tests all deployed contracts to verify build integrity
+# Comprehensive Contract Function Testing
+# Tests all functions across all 12 deployed contracts
 
 set -e
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+echo "=========================================================="
+echo "Orion RWA Lending Protocol - Complete Contract Test Suite"
+echo "=========================================================="
+echo ""
+echo "Network: Stellar Testnet"
+echo "Deployer: testnet-deployer"
+echo "Date: $(date)"
+echo ""
 
-# Load deployed addresses
-DEPLOYED_FILE="contracts/deployed-addresses.json"
+# Contract addresses
+ORACLE="CDQ3C3T477QZFH6KQMQEA4HTIVIHOMN5YKDWHBDQT4EBO4MNXI5ZXKVX"
+LENDING_POOL="CCW2TFZ7DWNMORNW3QVPYI5VYLNITMUMH42OKILXDLPN2J7HZQ545TWJ"
+USDC="CAXHQJ6IHN2TPAJ4NEOXJJLRRAO74BEAWA3RXHD6NSOWRBQCTVZA3ZGS"
 
-if [ ! -f "$DEPLOYED_FILE" ]; then
-    echo -e "${RED}❌ Error: deployed-addresses.json not found${NC}"
-    exit 1
-fi
+RWA_INVOICES="CBFKZAVQ57FUWFTPS2SDHDKWZN2OI2MYRNZ4AZ2FHZ5M62FAT4OAC2SP"
+RWA_TBILLS="CD3ZKDA3VG4PQAPXCPJV6VZJ65ACA2N7ISPUF4FN73ITMCNHKCEGMZAW"
+RWA_REALESTATE="CCSCN4NNINMSENMRRFYHW7M6D3NBMK33NE3BA5XCCT26CSCJT5ZKYF46"
 
-# Extract addresses using jq or simple grep/sed
-USDC_MOCK=$(grep -A 1 '"usdc_mock"' $DEPLOYED_FILE | tail -1 | sed 's/.*"\(.*\)".*/\1/')
-RWA_INVOICES=$(grep -A 1 '"rwa_invoices"' $DEPLOYED_FILE | tail -1 | sed 's/.*"\(.*\)".*/\1/')
-RWA_TBILLS=$(grep -A 1 '"rwa_tbills"' $DEPLOYED_FILE | tail -1 | sed 's/.*"\(.*\)".*/\1/')
-RWA_REALESTATE=$(grep -A 1 '"rwa_realestate"' $DEPLOYED_FILE | tail -1 | sed 's/.*"\(.*\)".*/\1/')
-STRWA_INVOICES=$(grep -A 1 '"strwa_invoices"' $DEPLOYED_FILE | tail -1 | sed 's/.*"\(.*\)".*/\1/')
-STRWA_TBILLS=$(grep -A 1 '"strwa_tbills"' $DEPLOYED_FILE | tail -1 | sed 's/.*"\(.*\)".*/\1/')
-STRWA_REALESTATE=$(grep -A 1 '"strwa_realestate"' $DEPLOYED_FILE | tail -1 | sed 's/.*"\(.*\)".*/\1/')
-VAULT_INVOICES=$(grep -A 1 '"vault_invoices"' $DEPLOYED_FILE | tail -1 | sed 's/.*"\(.*\)".*/\1/')
-VAULT_TBILLS=$(grep -A 1 '"vault_tbills"' $DEPLOYED_FILE | tail -1 | sed 's/.*"\(.*\)".*/\1/')
-VAULT_REALESTATE=$(grep -A 1 '"vault_realestate"' $DEPLOYED_FILE | tail -1 | sed 's/.*"\(.*\)".*/\1/')
-LENDING_POOL=$(grep -A 1 '"lending_pool"' $DEPLOYED_FILE | tail -1 | sed 's/.*"\(.*\)".*/\1/')
-ORACLE=$(grep -A 1 '"mock_oracle"' $DEPLOYED_FILE | tail -1 | sed 's/.*"\(.*\)".*/\1/')
+STRWA_INVOICES="CDHGP3XMH2FUQ6FFUHGLDFN5C26W7C6FW5GZ5N743M546KXWKHHK74IL"
+STRWA_TBILLS="CDGL6V3VT6HAIWNDQLYTLWFXF4O7L3TNWYD3OUEE4JNCLX3EXHH2HSEA"
+STRWA_REALESTATE="CD5WDVFPWBLERKA3RYQT6L7V5J5NLHL3HP64WYJUVZMNUQLAGPLEYOZR"
 
-# Test user address (deployer)
-USER_ADDRESS=$(stellar keys address deployer)
+VAULT_INVOICES="CCYADH4LWFOIRCZPWCIMGG46M5ZUUQ3WQUA4FF2BJNSFQUHIKTE32N2G"
+VAULT_TBILLS="CAFQWK3D3QLMGSW2OL6HE3VTCLCKZKPWNTCTKBM5MFLKKZWIKTA6Z7DP"
+VAULT_REALESTATE="CAGUJJGFK7N5WC4CEYS3CS6QH7RIAWBPZIMB6ELVHGBJ5KBA3R3WMWLI"
 
-# Test results tracking
+DEPLOYER="GAADPNKZXJEJ6DDDCSGZH3EIIUB2BUKOMH3RQSNZZEKA5GTXRDZBLO3D"
+
+# Test counters
 TOTAL_TESTS=0
 PASSED_TESTS=0
 FAILED_TESTS=0
 
-# Function to run test and track results
+# Function to run test
 run_test() {
     local test_name="$1"
     local command="$2"
 
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
-    echo -e "\n${BLUE}🧪 Test $TOTAL_TESTS: $test_name${NC}"
+    echo ""
+    echo "[$TOTAL_TESTS] Testing: $test_name"
 
-    if eval "$command" > /tmp/test_output.log 2>&1; then
-        echo -e "${GREEN}✅ PASSED${NC}"
+    if eval "$command" > /dev/null 2>&1; then
+        echo "✅ PASSED"
         PASSED_TESTS=$((PASSED_TESTS + 1))
-        cat /tmp/test_output.log | head -5
         return 0
     else
-        echo -e "${RED}❌ FAILED${NC}"
+        echo "❌ FAILED"
         FAILED_TESTS=$((FAILED_TESTS + 1))
-        cat /tmp/test_output.log
         return 1
     fi
 }
 
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  COMPREHENSIVE CONTRACT TESTING SUITE${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+# Function to run test with output
+run_test_with_output() {
+    local test_name="$1"
+    local command="$2"
 
-echo -e "\n${YELLOW}📋 Contract Addresses:${NC}"
-echo "USDC Mock:           $USDC_MOCK"
-echo "RWA Invoices:        $RWA_INVOICES"
-echo "RWA TBills:          $RWA_TBILLS"
-echo "RWA Real Estate:     $RWA_REALESTATE"
-echo "stRWA Invoices:      $STRWA_INVOICES"
-echo "stRWA TBills:        $STRWA_TBILLS"
-echo "stRWA Real Estate:   $STRWA_REALESTATE"
-echo "Vault Invoices:      $VAULT_INVOICES"
-echo "Vault TBills:        $VAULT_TBILLS"
-echo "Vault Real Estate:   $VAULT_REALESTATE"
-echo "Lending Pool:        $LENDING_POOL"
-echo "Oracle:              $ORACLE"
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    echo ""
+    echo "[$TOTAL_TESTS] Testing: $test_name"
 
-echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  SECTION 1: ORACLE CONTRACT TESTS${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    result=$(eval "$command" 2>&1)
+    exit_code=$?
 
-# Test 1: Inspect Oracle contract
-run_test "Inspect Oracle Contract" \
-    "stellar contract inspect --id $ORACLE --network testnet"
+    if [ $exit_code -eq 0 ]; then
+        echo "✅ PASSED"
+        echo "Result: $result"
+        PASSED_TESTS=$((PASSED_TESTS + 1))
+        return 0
+    else
+        echo "❌ FAILED"
+        echo "Error: $result"
+        FAILED_TESTS=$((FAILED_TESTS + 1))
+        return 1
+    fi
+}
 
-# Test 2: Query Oracle for Invoices price
-run_test "Get Price for stRWA Invoices" \
-    "stellar contract invoke --id $ORACLE --network testnet -- get_price --token_address $STRWA_INVOICES"
+echo "=========================================================="
+echo "1. ORACLE CONTRACT TESTS"
+echo "=========================================================="
+echo "Contract: $ORACLE"
 
-# Test 3: Query Oracle for TBills price
-run_test "Get Price for stRWA TBills" \
-    "stellar contract invoke --id $ORACLE --network testnet -- get_price --token_address $STRWA_TBILLS"
+run_test_with_output "Oracle: get_price (Invoices stRWA)" \
+    "stellar contract invoke --id $ORACLE --source-account testnet-deployer --network testnet -- get_price --asset $STRWA_INVOICES"
 
-# Test 4: Query Oracle for Real Estate price
-run_test "Get Price for stRWA Real Estate" \
-    "stellar contract invoke --id $ORACLE --network testnet -- get_price --token_address $STRWA_REALESTATE"
+run_test_with_output "Oracle: get_price (TBills stRWA)" \
+    "stellar contract invoke --id $ORACLE --source-account testnet-deployer --network testnet -- get_price --asset $STRWA_TBILLS"
 
-echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  SECTION 2: USDC MOCK TOKEN TESTS${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+run_test_with_output "Oracle: get_price (Real Estate stRWA)" \
+    "stellar contract invoke --id $ORACLE --source-account testnet-deployer --network testnet -- get_price --asset $STRWA_REALESTATE"
 
-# Test 5: Check USDC balance
-run_test "Check USDC Balance" \
-    "stellar contract invoke --id $USDC_MOCK --network testnet -- balance --id $USER_ADDRESS"
+run_test "Oracle: set_price (Invoices stRWA)" \
+    "stellar contract invoke --id $ORACLE --source-account testnet-deployer --network testnet -- set_price --asset_address $STRWA_INVOICES --price 1000000 --timestamp 0 --source $DEPLOYER"
 
-# Test 6: Get USDC token name
-run_test "Get USDC Name" \
-    "stellar contract invoke --id $USDC_MOCK --network testnet -- name"
+run_test "Oracle: set_price (TBills stRWA)" \
+    "stellar contract invoke --id $ORACLE --source-account testnet-deployer --network testnet -- set_price --asset_address $STRWA_TBILLS --price 1050000 --timestamp 0 --source $DEPLOYER"
 
-# Test 7: Get USDC token symbol
-run_test "Get USDC Symbol" \
-    "stellar contract invoke --id $USDC_MOCK --network testnet -- symbol"
+run_test "Oracle: set_price (Real Estate stRWA)" \
+    "stellar contract invoke --id $ORACLE --source-account testnet-deployer --network testnet -- set_price --asset_address $STRWA_REALESTATE --price 950000 --timestamp 0 --source $DEPLOYER"
 
-# Test 8: Get USDC decimals
-run_test "Get USDC Decimals" \
-    "stellar contract invoke --id $USDC_MOCK --network testnet -- decimals"
+run_test_with_output "Oracle: get_price_data (Invoices)" \
+    "stellar contract invoke --id $ORACLE --source-account testnet-deployer --network testnet -- get_price_data --asset $STRWA_INVOICES"
 
-echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  SECTION 3: RWA TOKEN TESTS (Invoices)${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo "=========================================================="
+echo "2. USDC MOCK CONTRACT TESTS"
+echo "=========================================================="
+echo "Contract: $USDC"
 
-# Test 9: Check RWA Invoices balance
-run_test "Check RWA Invoices Balance" \
-    "stellar contract invoke --id $RWA_INVOICES --network testnet -- balance --id $USER_ADDRESS"
+run_test_with_output "USDC: balance (deployer)" \
+    "stellar contract invoke --id $USDC --source-account testnet-deployer --network testnet -- balance --id $DEPLOYER"
 
-# Test 10: Get RWA Invoices name
-run_test "Get RWA Invoices Name" \
-    "stellar contract invoke --id $RWA_INVOICES --network testnet -- name"
+run_test "USDC: mint (1000 USDC)" \
+    "stellar contract invoke --id $USDC --source-account testnet-deployer --network testnet -- mint --to $DEPLOYER --amount 1000000000"
 
-# Test 11: Get RWA Invoices symbol
-run_test "Get RWA Invoices Symbol" \
-    "stellar contract invoke --id $RWA_INVOICES --network testnet -- symbol"
+run_test_with_output "USDC: balance (after mint)" \
+    "stellar contract invoke --id $USDC --source-account testnet-deployer --network testnet -- balance --id $DEPLOYER"
 
-echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  SECTION 4: stRWA TOKEN TESTS (Invoices)${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo "=========================================================="
+echo "3. RWA TOKEN TESTS (Invoices)"
+echo "=========================================================="
+echo "Contract: $RWA_INVOICES"
 
-# Test 12: Check stRWA Invoices balance
-run_test "Check stRWA Invoices Balance" \
-    "stellar contract invoke --id $STRWA_INVOICES --network testnet -- balance --id $USER_ADDRESS"
+run_test "RWA Invoices: allow_user (whitelist deployer)" \
+    "stellar contract invoke --id $RWA_INVOICES --source-account testnet-deployer --network testnet -- allow_user --user $DEPLOYER"
 
-# Test 13: Get stRWA Invoices name
-run_test "Get stRWA Invoices Name" \
-    "stellar contract invoke --id $STRWA_INVOICES --network testnet -- name"
+run_test_with_output "RWA Invoices: is_allowed (check whitelist)" \
+    "stellar contract invoke --id $RWA_INVOICES --source-account testnet-deployer --network testnet -- is_allowed --user $DEPLOYER"
 
-# Test 14: Get stRWA Invoices symbol
-run_test "Get stRWA Invoices Symbol" \
-    "stellar contract invoke --id $STRWA_INVOICES --network testnet -- symbol"
+run_test "RWA Invoices: mint_rwa_tokens (10 tokens)" \
+    "stellar contract invoke --id $RWA_INVOICES --source-account testnet-deployer --network testnet -- mint_rwa_tokens --user $DEPLOYER --amount 10000000000000000000"
 
-# Test 15: Get stRWA Invoices total supply
-run_test "Get stRWA Invoices Total Supply" \
-    "stellar contract invoke --id $STRWA_INVOICES --network testnet -- total_supply"
+run_test_with_output "RWA Invoices: balance (after minting)" \
+    "stellar contract invoke --id $RWA_INVOICES --source-account testnet-deployer --network testnet -- balance --id $DEPLOYER"
 
-echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  SECTION 5: VAULT TESTS (Invoices)${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+run_test "RWA Invoices: allow_user (whitelist vault)" \
+    "stellar contract invoke --id $RWA_INVOICES --source-account testnet-deployer --network testnet -- allow_user --user $VAULT_INVOICES"
 
-# Test 16: Inspect Vault contract
-run_test "Inspect Vault Invoices Contract" \
-    "stellar contract inspect --id $VAULT_INVOICES --network testnet"
+echo ""
+echo "=========================================================="
+echo "4. RWA TOKEN TESTS (TBills)"
+echo "=========================================================="
+echo "Contract: $RWA_TBILLS"
 
-# Test 17: Get Vault balance
-run_test "Get Vault Invoices Balance" \
-    "stellar contract invoke --id $VAULT_INVOICES --network testnet -- get_user_balance --user $USER_ADDRESS"
+run_test "RWA TBills: allow_user" \
+    "stellar contract invoke --id $RWA_TBILLS --source-account testnet-deployer --network testnet -- allow_user --user $DEPLOYER"
 
-# Test 18: Get Vault total deposits
-run_test "Get Vault Invoices Total Deposits" \
-    "stellar contract invoke --id $VAULT_INVOICES --network testnet -- get_total_deposits"
+run_test "RWA TBills: mint_rwa_tokens (10 tokens)" \
+    "stellar contract invoke --id $RWA_TBILLS --source-account testnet-deployer --network testnet -- mint_rwa_tokens --user $DEPLOYER --amount 10000000000000000000"
 
-# Test 19: Get Vault yield rate
-run_test "Get Vault Invoices Yield Rate" \
-    "stellar contract invoke --id $VAULT_INVOICES --network testnet -- get_yield_rate"
+run_test_with_output "RWA TBills: balance" \
+    "stellar contract invoke --id $RWA_TBILLS --source-account testnet-deployer --network testnet -- balance --id $DEPLOYER"
 
-# Test 20: Get user yield
-run_test "Get User Yield (Invoices)" \
-    "stellar contract invoke --id $VAULT_INVOICES --network testnet -- get_user_yield --user $USER_ADDRESS"
+run_test "RWA TBills: allow_user (vault)" \
+    "stellar contract invoke --id $RWA_TBILLS --source-account testnet-deployer --network testnet -- allow_user --user $VAULT_TBILLS"
 
-echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  SECTION 6: LENDING POOL TESTS${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo "=========================================================="
+echo "5. RWA TOKEN TESTS (Real Estate)"
+echo "=========================================================="
+echo "Contract: $RWA_REALESTATE"
 
-# Test 21: Inspect Lending Pool contract
-run_test "Inspect Lending Pool Contract" \
-    "stellar contract inspect --id $LENDING_POOL --network testnet"
+run_test "RWA Real Estate: allow_user" \
+    "stellar contract invoke --id $RWA_REALESTATE --source-account testnet-deployer --network testnet -- allow_user --user $DEPLOYER"
 
-# Test 22: Get Lending Pool total borrowed
-run_test "Get Total Borrowed Amount" \
-    "stellar contract invoke --id $LENDING_POOL --network testnet -- get_total_borrowed"
+run_test "RWA Real Estate: mint_rwa_tokens (10 tokens)" \
+    "stellar contract invoke --id $RWA_REALESTATE --source-account testnet-deployer --network testnet -- mint_rwa_tokens --user $DEPLOYER --amount 10000000000000000000"
 
-# Test 23: Get Lending Pool available liquidity
-run_test "Get Available Liquidity" \
-    "stellar contract invoke --id $LENDING_POOL --network testnet -- get_available_liquidity"
+run_test_with_output "RWA Real Estate: balance" \
+    "stellar contract invoke --id $RWA_REALESTATE --source-account testnet-deployer --network testnet -- balance --id $DEPLOYER"
 
-# Test 24: Get user loan (should return no loan if not borrowed)
-run_test "Get User Loan Status" \
-    "stellar contract invoke --id $LENDING_POOL --network testnet -- get_loan --borrower $USER_ADDRESS"
+run_test "RWA Real Estate: allow_user (vault)" \
+    "stellar contract invoke --id $RWA_REALESTATE --source-account testnet-deployer --network testnet -- allow_user --user $VAULT_REALESTATE"
 
-# Test 25: Get interest rate
-run_test "Get Interest Rate" \
-    "stellar contract invoke --id $LENDING_POOL --network testnet -- get_interest_rate"
+echo ""
+echo "=========================================================="
+echo "6. VAULT TESTS (Invoices)"
+echo "=========================================================="
+echo "Contract: $VAULT_INVOICES"
 
-echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  SECTION 7: MULTI-ASSET VERIFICATION${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+run_test_with_output "Vault Invoices: get_total_deposits (before stake)" \
+    "stellar contract invoke --id $VAULT_INVOICES --source-account testnet-deployer --network testnet -- get_total_deposits"
 
-# Test 26: Verify all 3 stRWA tokens exist
-run_test "Verify stRWA TBills Token" \
-    "stellar contract invoke --id $STRWA_TBILLS --network testnet -- name"
+run_test "Vault Invoices: approve RWA tokens for vault" \
+    "stellar contract invoke --id $RWA_INVOICES --source-account testnet-deployer --network testnet -- approve --from $DEPLOYER --spender $VAULT_INVOICES --amount 5000000000000000000 --expiration_ledger 1000000"
 
-# Test 27: Verify stRWA Real Estate
-run_test "Verify stRWA Real Estate Token" \
-    "stellar contract invoke --id $STRWA_REALESTATE --network testnet -- name"
+run_test "Vault Invoices: stake (5 tokens)" \
+    "stellar contract invoke --id $VAULT_INVOICES --source-account testnet-deployer --network testnet -- stake --user $DEPLOYER --amount 5000000000000000000"
 
-# Test 28: Verify all 3 vaults exist
-run_test "Verify Vault TBills" \
-    "stellar contract invoke --id $VAULT_TBILLS --network testnet -- get_total_deposits"
+run_test_with_output "Vault Invoices: get_user_balance" \
+    "stellar contract invoke --id $VAULT_INVOICES --source-account testnet-deployer --network testnet -- get_user_balance --user $DEPLOYER"
 
-# Test 29: Verify Vault Real Estate
-run_test "Verify Vault Real Estate" \
-    "stellar contract invoke --id $VAULT_REALESTATE --network testnet -- get_total_deposits"
+run_test_with_output "Vault Invoices: get_total_deposits (after stake)" \
+    "stellar contract invoke --id $VAULT_INVOICES --source-account testnet-deployer --network testnet -- get_total_deposits"
 
-# Test 30: Check all RWA tokens
-run_test "Verify RWA TBills Token" \
-    "stellar contract invoke --id $RWA_TBILLS --network testnet -- name"
+run_test_with_output "Vault Invoices: get_yield_balance" \
+    "stellar contract invoke --id $VAULT_INVOICES --source-account testnet-deployer --network testnet -- get_yield_balance --user $DEPLOYER"
 
-# Test 31: Verify RWA Real Estate
-run_test "Verify RWA Real Estate Token" \
-    "stellar contract invoke --id $RWA_REALESTATE --network testnet -- name"
+echo ""
+echo "=========================================================="
+echo "7. VAULT TESTS (TBills)"
+echo "=========================================================="
+echo "Contract: $VAULT_TBILLS"
 
-echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  TEST SUMMARY${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+run_test "Vault TBills: approve RWA tokens" \
+    "stellar contract invoke --id $RWA_TBILLS --source-account testnet-deployer --network testnet -- approve --from $DEPLOYER --spender $VAULT_TBILLS --amount 5000000000000000000 --expiration_ledger 1000000"
 
-echo -e "\n${YELLOW}📊 Results:${NC}"
-echo -e "Total Tests:  $TOTAL_TESTS"
-echo -e "${GREEN}Passed:       $PASSED_TESTS${NC}"
-echo -e "${RED}Failed:       $FAILED_TESTS${NC}"
+run_test "Vault TBills: stake (5 tokens)" \
+    "stellar contract invoke --id $VAULT_TBILLS --source-account testnet-deployer --network testnet -- stake --user $DEPLOYER --amount 5000000000000000000"
 
-SUCCESS_RATE=$((PASSED_TESTS * 100 / TOTAL_TESTS))
-echo -e "\n${BLUE}Success Rate: $SUCCESS_RATE%${NC}"
+run_test_with_output "Vault TBills: get_user_balance" \
+    "stellar contract invoke --id $VAULT_TBILLS --source-account testnet-deployer --network testnet -- get_user_balance --user $DEPLOYER"
+
+echo ""
+echo "=========================================================="
+echo "8. VAULT TESTS (Real Estate)"
+echo "=========================================================="
+echo "Contract: $VAULT_REALESTATE"
+
+run_test "Vault Real Estate: approve RWA tokens" \
+    "stellar contract invoke --id $RWA_REALESTATE --source-account testnet-deployer --network testnet -- approve --from $DEPLOYER --spender $VAULT_REALESTATE --amount 5000000000000000000 --expiration_ledger 1000000"
+
+run_test "Vault Real Estate: stake (5 tokens)" \
+    "stellar contract invoke --id $VAULT_REALESTATE --source-account testnet-deployer --network testnet -- stake --user $DEPLOYER --amount 5000000000000000000"
+
+run_test_with_output "Vault Real Estate: get_user_balance" \
+    "stellar contract invoke --id $VAULT_REALESTATE --source-account testnet-deployer --network testnet -- get_user_balance --user $DEPLOYER"
+
+echo ""
+echo "=========================================================="
+echo "9. stRWA TOKEN TESTS (Invoices)"
+echo "=========================================================="
+echo "Contract: $STRWA_INVOICES"
+
+run_test_with_output "stRWA Invoices: balance (after staking)" \
+    "stellar contract invoke --id $STRWA_INVOICES --source-account testnet-deployer --network testnet -- balance --id $DEPLOYER"
+
+run_test "stRWA Invoices: approve lending pool" \
+    "stellar contract invoke --id $STRWA_INVOICES --source-account testnet-deployer --network testnet -- approve --from $DEPLOYER --spender $LENDING_POOL --amount 3000000000000000000 --expiration_ledger 1000000"
+
+echo ""
+echo "=========================================================="
+echo "10. stRWA TOKEN TESTS (TBills)"
+echo "=========================================================="
+echo "Contract: $STRWA_TBILLS"
+
+run_test_with_output "stRWA TBills: balance (after staking)" \
+    "stellar contract invoke --id $STRWA_TBILLS --source-account testnet-deployer --network testnet -- balance --id $DEPLOYER"
+
+echo ""
+echo "=========================================================="
+echo "11. stRWA TOKEN TESTS (Real Estate)"
+echo "=========================================================="
+echo "Contract: $STRWA_REALESTATE"
+
+run_test_with_output "stRWA Real Estate: balance (after staking)" \
+    "stellar contract invoke --id $STRWA_REALESTATE --source-account testnet-deployer --network testnet -- balance --id $DEPLOYER"
+
+echo ""
+echo "=========================================================="
+echo "12. LENDING POOL TESTS"
+echo "=========================================================="
+echo "Contract: $LENDING_POOL"
+
+run_test_with_output "Lending Pool: get_all_borrowers (before loan)" \
+    "stellar contract invoke --id $LENDING_POOL --source-account testnet-deployer --network testnet -- get_all_borrowers"
+
+run_test "Lending Pool: approve USDC for lending pool" \
+    "stellar contract invoke --id $USDC --source-account testnet-deployer --network testnet -- approve --from $DEPLOYER --spender $LENDING_POOL --amount 1000000000 --expiration_ledger 1000000"
+
+echo ""
+echo "Lending Pool: originate_loan (2 USDC against 3 stRWA Invoices)"
+echo "Note: This test may take longer..."
+LOAN_RESULT=$(stellar contract invoke \
+  --id $LENDING_POOL \
+  --source-account testnet-deployer \
+  --network testnet \
+  -- originate_loan \
+    --borrower $DEPLOYER \
+    --collaterals "[[\"$STRWA_INVOICES\", \"3000000000000000000\"]]" \
+    --loan_amount 2000000 \
+    --duration_months 12 2>&1)
+
+if echo "$LOAN_RESULT" | grep -q "\"1\""; then
+    echo "✅ PASSED - Loan ID: 1"
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+else
+    echo "❌ FAILED"
+    echo "Result: $LOAN_RESULT"
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+fi
+
+run_test_with_output "Lending Pool: get_all_borrowers (after loan)" \
+    "stellar contract invoke --id $LENDING_POOL --source-account testnet-deployer --network testnet -- get_all_borrowers"
+
+run_test_with_output "Lending Pool: get_health_factor" \
+    "stellar contract invoke --id $LENDING_POOL --source-account testnet-deployer --network testnet -- get_health_factor --borrower $DEPLOYER --loan_id 1"
+
+run_test "Lending Pool: repay_loan (1 USDC)" \
+    "stellar contract invoke --id $LENDING_POOL --source-account testnet-deployer --network testnet -- repay_loan --borrower $DEPLOYER --loan_id 1 --amount 1000000"
+
+echo ""
+echo "=========================================================="
+echo "TEST SUMMARY"
+echo "=========================================================="
+echo ""
+echo "Total Tests:  $TOTAL_TESTS"
+echo "Passed:       $PASSED_TESTS"
+echo "Failed:       $FAILED_TESTS"
+echo ""
 
 if [ $FAILED_TESTS -eq 0 ]; then
-    echo -e "\n${GREEN}✅ ALL TESTS PASSED! Build is working correctly.${NC}"
+    echo "🎉 ALL TESTS PASSED!"
+    echo ""
+    echo "✅ Oracle Contract: Operational"
+    echo "✅ USDC Mock: Operational"
+    echo "✅ RWA Tokens (3): Operational"
+    echo "✅ stRWA Tokens (3): Operational"
+    echo "✅ Vaults (3): Operational"
+    echo "✅ Lending Pool: Operational"
+    echo ""
+    echo "System Status: FULLY OPERATIONAL"
     exit 0
 else
-    echo -e "\n${RED}⚠️  Some tests failed. Please review the errors above.${NC}"
+    echo "⚠️  Some tests failed. Please review the output above."
+    echo ""
+    echo "Pass Rate: $(echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc)%"
     exit 1
 fi

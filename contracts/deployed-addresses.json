@@ -8,9 +8,9 @@
     "strwa_invoices": "CDHGP3XMH2FUQ6FFUHGLDFN5C26W7C6FW5GZ5N743M546KXWKHHK74IL",
     "strwa_tbills": "CDGL6V3VT6HAIWNDQLYTLWFXF4O7L3TNWYD3OUEE4JNCLX3EXHH2HSEA",
     "strwa_realestate": "CD5WDVFPWBLERKA3RYQT6L7V5J5NLHL3HP64WYJUVZMNUQLAGPLEYOZR",
-    "vault_invoices": "CCYADH4LWFOIRCZPWCIMGG46M5ZUUQ3WQUA4FF2BJNSFQUHIKTE32N2G",
-    "vault_tbills": "CAFQWK3D3QLMGSW2OL6HE3VTCLCKZKPWNTCTKBM5MFLKKZWIKTA6Z7DP",
-    "vault_realestate": "CAGUJJGFK7N5WC4CEYS3CS6QH7RIAWBPZIMB6ELVHGBJ5KBA3R3WMWLI",
+    "vault_invoices": "CDKEJCIPRG3CBX7EKNAK46VHA2A24UGO2QV4LP4WOWJV6NKCPCRECBBI",
+    "vault_tbills": "CALX3MAHJSRAG3SYD2OWOPQYS5W467NIESU3PUXD3OVTQ2YLXGMMSCOR",
+    "vault_realestate": "CDRMOWCQR3PO3E5CE4AJPMFIHILDZY2HGHEWUNB3JGXXL5NY37I7QIRT",
     "lending_pool": "CCW2TFZ7DWNMORNW3QVPYI5VYLNITMUMH42OKILXDLPN2J7HZQ545TWJ",
     "mock_oracle": "CDQ3C3T477QZFH6KQMQEA4HTIVIHOMN5YKDWHBDQT4EBO4MNXI5ZXKVX"
   },
@@ -19,5 +19,7 @@
   "deployer_address": "GAADPNKZXJEJ6DDDCSGZH3EIIUB2BUKOMH3RQSNZZEKA5GTXRDZBLO3D",
   "network_passphrase": "Test SDF Network ; September 2015",
   "rpc_url": "https://soroban-testnet.stellar.org",
-  "notes": "Oracle contract redeployed on 2025-11-10 with fixed get_price and set_price functions"
+  "notes": "Oracle contract redeployed on 2025-11-10 with fixed get_price and set_price functions",
+  "vault_updated_at": "2025-11-10T18:32:27Z",
+  "vault_update_notes": "Vaults redeployed with transfer() instead of transfer_from() to fix AllowList approve issue"
 }

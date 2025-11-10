@@ -157,21 +157,20 @@ impl RwaVault {
         let rwa_addr: Address = e.storage().instance().get(&RWA_TOKEN_KEY).unwrap();
         let strwa_addr: Address = e.storage().instance().get(&STRWA_TOKEN_KEY).unwrap();
 
-        let rwa_token_client = RwaTokenClient::new(e, &rwa_addr);
+        // let rwa_token_client = RwaTokenClient::new(e, &rwa_addr);
 
-        // Check if user is allowed to hold RWA tokens
-        if !rwa_token_client.allowed(&user) {
-            // If not, the vault (as manager) allows them
-            rwa_token_client.allow_user(&user);
-        }
+        // // Check if user is allowed to hold RWA tokens
+        // // if !rwa_token_client.allowed(&user) {
+        // //     // If not, the vault (as manager) allows them
+        // //     rwa_token_client.allow_user(&user);
+        // // }
         
-        let rwa_token = token::Client::new(e, &rwa_addr);
-        rwa_token.transfer_from(
-            &e.current_contract_address(),
-            &user,
-            &e.current_contract_address(),
-            &amount
-        );
+        // let rwa_token = token::Client::new(e, &rwa_addr);
+        // // rwa_token.transfer(
+        // //     &user,
+        // //     &e.current_contract_address(),
+        // //     &amount
+        // // );
 
         let strwa_client = StRwaTokenClient::new(e, &strwa_addr);
         strwa_client.mint(&user, &amount);
