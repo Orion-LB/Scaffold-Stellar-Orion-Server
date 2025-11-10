@@ -33,19 +33,25 @@ generate_bot_key() {
     local BOT_NAME=$1
     local KEY_NAME=$2
 
-    echo -e "${YELLOW}Generating key for ${BOT_NAME}...${NC}"
+    echo -e "${YELLOW}Checking key for ${BOT_NAME}...${NC}" >&2
 
-    # Generate and fund the account
-    stellar keys generate "$KEY_NAME" --network testnet --fund
+    # Check if key exists
+    if stellar keys address "$KEY_NAME" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Key '${KEY_NAME}' already exists.${NC}" >&2
+    else
+        echo -e "${YELLOW}Generating key for ${BOT_NAME}...${NC}" >&2
+        # Generate and fund the account
+        stellar keys generate "$KEY_NAME" --network testnet --fund >&2
+    fi
 
     # Get the public and secret keys
     local PUBLIC_KEY=$(stellar keys address "$KEY_NAME")
     local SECRET_KEY=$(stellar keys show "$KEY_NAME")
 
-    echo -e "${GREEN}✓ Generated:${NC}"
-    echo -e "  Public:  ${BLUE}${PUBLIC_KEY}${NC}"
-    echo -e "  Secret:  ${PURPLE}${SECRET_KEY}${NC}"
-    echo ""
+    echo -e "${GREEN}✓ Configuration for ${BOT_NAME}:${NC}" >&2
+    echo -e "  Public:  ${BLUE}${PUBLIC_KEY}${NC}" >&2
+    echo -e "  Secret:  ${PURPLE}(hidden)${NC}" >&2
+    echo "" >&2
 
     # Return the secret key for env file
     echo "$SECRET_KEY"

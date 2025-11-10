@@ -21,9 +21,9 @@ impl<'a> RwaTokenClient<'a> {
 
     pub fn allow_user(&self, user: &Address) {
         let vault_address = self.env.current_contract_address();
-        self.env.invoke_contract(
+        self.env.invoke_contract::<()>(
             self.address,
-            &symbol_short!("allow_user"),
+            &Symbol::new(self.env, "allow_user"),
             (user, vault_address).into_val(self.env),
         );
     }

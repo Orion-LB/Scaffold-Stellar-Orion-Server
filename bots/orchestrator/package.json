@@ -4,7 +4,7 @@
   "description": "Orchestrator for Orion RWA Lending Bots",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts"
   },

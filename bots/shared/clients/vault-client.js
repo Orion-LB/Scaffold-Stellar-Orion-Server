@@ -66,7 +66,7 @@ const config_1 = require("../config");
 class VaultClient {
   constructor(config) {
     this.config = config || config_1.SharedConfig.getInstance();
-    this.server = new StellarSdk.SorobanRpc.Server(this.config.getRpcUrl());
+    this.server = new StellarSdk.rpc.Server(this.config.getRpcUrl());
     this.vaultContractId = this.config.getContractId("rwa_vault");
   }
   /**
@@ -87,7 +87,7 @@ class VaultClient {
         .setTimeout(30)
         .build();
       const simulated = await this.server.simulateTransaction(transaction);
-      if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
+      if (!StellarSdk.rpc.Api.isSimulationSuccess(simulated)) {
         return 0n; // No yield available
       }
       const result = StellarSdk.scValToNative(simulated.result.retval);
@@ -115,7 +115,7 @@ class VaultClient {
         .setTimeout(30)
         .build();
       const simulated = await this.server.simulateTransaction(transaction);
-      if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
+      if (!StellarSdk.rpc.Api.isSimulationSuccess(simulated)) {
         return 0n;
       }
       const result = StellarSdk.scValToNative(simulated.result.retval);
@@ -141,7 +141,7 @@ class VaultClient {
         .setTimeout(30)
         .build();
       const simulated = await this.server.simulateTransaction(transaction);
-      if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
+      if (!StellarSdk.rpc.Api.isSimulationSuccess(simulated)) {
         return false;
       }
       const result = StellarSdk.scValToNative(simulated.result.retval);

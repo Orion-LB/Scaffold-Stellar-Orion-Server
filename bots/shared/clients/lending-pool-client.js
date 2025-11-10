@@ -66,7 +66,7 @@ const config_1 = require("../config");
 class LendingPoolClient {
   constructor(keypair, config) {
     this.config = config || config_1.SharedConfig.getInstance();
-    this.server = new StellarSdk.SorobanRpc.Server(this.config.getRpcUrl());
+    this.server = new StellarSdk.rpc.Server(this.config.getRpcUrl());
     this.lendingPoolContractId = this.config.getContractId("lending_pool");
     this.keypair = keypair;
   }
@@ -89,7 +89,7 @@ class LendingPoolClient {
         .setTimeout(30)
         .build();
       const simulated = await this.server.simulateTransaction(transaction);
-      if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
+      if (!StellarSdk.rpc.Api.isSimulationSuccess(simulated)) {
         // No loan found
         return null;
       }
@@ -137,14 +137,13 @@ class LendingPoolClient {
         .build();
       // Simulate
       const simulated = await this.server.simulateTransaction(transaction);
-      if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
+      if (!StellarSdk.rpc.Api.isSimulationSuccess(simulated)) {
         throw new Error("Repayment simulation failed");
       }
       // Assemble with simulation results
-      transaction = StellarSdk.SorobanRpc.assembleTransaction(
-        transaction,
-        simulated,
-      ).build();
+      transaction = StellarSdk.rpc
+        .assembleTransaction(transaction, simulated)
+        .build();
       // Sign
       transaction.sign(this.keypair);
       // Submit
@@ -181,14 +180,13 @@ class LendingPoolClient {
         .build();
       // Simulate
       const simulated = await this.server.simulateTransaction(transaction);
-      if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
+      if (!StellarSdk.rpc.Api.isSimulationSuccess(simulated)) {
         throw new Error("Warning simulation failed");
       }
       // Assemble
-      transaction = StellarSdk.SorobanRpc.assembleTransaction(
-        transaction,
-        simulated,
-      ).build();
+      transaction = StellarSdk.rpc
+        .assembleTransaction(transaction, simulated)
+        .build();
       // Sign
       transaction.sign(this.keypair);
       // Submit
@@ -226,14 +224,13 @@ class LendingPoolClient {
         .build();
       // Simulate
       const simulated = await this.server.simulateTransaction(transaction);
-      if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
+      if (!StellarSdk.rpc.Api.isSimulationSuccess(simulated)) {
         throw new Error("Liquidation simulation failed");
       }
       // Assemble
-      transaction = StellarSdk.SorobanRpc.assembleTransaction(
-        transaction,
-        simulated,
-      ).build();
+      transaction = StellarSdk.rpc
+        .assembleTransaction(transaction, simulated)
+        .build();
       // Sign
       transaction.sign(this.keypair);
       // Submit

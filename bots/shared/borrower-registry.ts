@@ -14,7 +14,7 @@ export interface BorrowerRegistryData {
  */
 export class BorrowerRegistry {
   private static REGISTRY_PATH = join(__dirname, "./borrowers.json");
-  private data: BorrowerRegistryData;
+  private data!: BorrowerRegistryData;
 
   constructor() {
     this.load();

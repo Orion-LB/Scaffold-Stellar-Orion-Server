@@ -66,7 +66,7 @@ const config_1 = require("../config");
 class OracleClient {
   constructor(config) {
     this.config = config || config_1.SharedConfig.getInstance();
-    this.server = new StellarSdk.SorobanRpc.Server(this.config.getRpcUrl());
+    this.server = new StellarSdk.rpc.Server(this.config.getRpcUrl());
     this.oracleContractId = this.config.getContractId("oracle");
   }
   /**
@@ -91,7 +91,7 @@ class OracleClient {
         .setTimeout(30)
         .build();
       const simulated = await this.server.simulateTransaction(transaction);
-      if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
+      if (!StellarSdk.rpc.Api.isSimulationSuccess(simulated)) {
         throw new Error("Failed to get price from oracle");
       }
       // Parse the result

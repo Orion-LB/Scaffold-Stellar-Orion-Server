@@ -45,6 +45,9 @@ impl MockRwaToken {
 
         // Mint the requested amount of RWA tokens to the user
         Base::mint(e, &user, amount);
+
+        // Emit mint event
+        e.events().publish((symbol_short!("rwa_mint"), user.clone()), amount);
     }
 }
 

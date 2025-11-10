@@ -1,9 +1,9 @@
 // bots/orchestrator/src/orchestrator.ts
 import * as StellarSdk from "@stellar/stellar-sdk";
-import { SharedConfig } from "../../shared/config";
-import { OracleClient } from "../../shared/clients/oracle-client";
-import { LendingPoolClient } from "../../shared/clients/lending-pool-client";
-import { VaultClient } from "../../shared/clients/vault-client";
+import { SharedConfig } from "@shared/config";
+import { OracleClient } from "@shared/clients/oracle-client";
+import { LendingPoolClient } from "@shared/clients/lending-pool-client";
+import { VaultClient } from "@shared/clients/vault-client";
 
 /**
  * Mock bot classes for demonstration

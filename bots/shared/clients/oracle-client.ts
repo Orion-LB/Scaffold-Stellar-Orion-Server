@@ -12,13 +12,13 @@ export interface PriceData {
  * Client for interacting with the Oracle contract
  */
 export class OracleClient {
-  private server: StellarSdk.SorobanRpc.Server;
+  private server: StellarSdk.rpc.Server;
   private config: SharedConfig;
   private oracleContractId: string;
 
   constructor(config?: SharedConfig) {
     this.config = config || SharedConfig.getInstance();
-    this.server = new StellarSdk.SorobanRpc.Server(this.config.getRpcUrl());
+    this.server = new StellarSdk.rpc.Server(this.config.getRpcUrl());
     this.oracleContractId = this.config.getContractId("oracle");
   }
 
@@ -49,7 +49,7 @@ export class OracleClient {
 
       const simulated = await this.server.simulateTransaction(transaction);
 
-      if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
+      if (!StellarSdk.rpc.Api.isSimulationSuccess(simulated)) {
         throw new Error("Failed to get price from oracle");
       }
 

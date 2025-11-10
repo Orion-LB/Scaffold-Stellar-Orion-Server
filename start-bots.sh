@@ -116,7 +116,11 @@ build_bot() {
 
     echo -e "${YELLOW}  → Building ${BOT_NAME}...${NC}"
     cd "$BOT_DIR"
-    npm run build > /dev/null 2>&1
+    if [ "$BOT_NAME" == "orchestrator" ]; then
+        npm run build
+    else
+        npm run build > /dev/null 2>&1
+    fi
     cd "$SCRIPT_DIR"
     echo -e "${GREEN}  ✓ ${BOT_NAME} built successfully${NC}"
 }

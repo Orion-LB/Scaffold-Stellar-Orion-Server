@@ -1,326 +1,51 @@
-# Orion RWA Lending - Quick Start Guide
+# Orion RWA Multi-Asset - Quick Start Guide
 
-Get the Orion RWA Lending platform up and running in minutes!
+## 🎯 What Was Deployed
 
-## Prerequisites
+Your **multi-asset RWA lending protocol** is now live on Stellar testnet with:
 
-- Node.js v18+ ([Download](https://nodejs.org/))
-- Stellar CLI ([Install Guide](https://developers.stellar.org/docs/tools/developer-tools))
-- Git
+- ✅ **3 RWA Token Types**: Invoices, TBills, Real Estate
+- ✅ **3 stRWA Token Types**: Yield-bearing staked tokens
+- ✅ **3 Vaults**: Separate yield pools per asset
+- ✅ **Multi-Collateral Lending**: Users can borrow using ANY combination of assets
 
-## Step 1: Clone & Install
+## 📦 Contract Addresses - Copy to Frontend
 
-```bash
-# Already done if you're reading this!
-cd scafold-stellar
-
-# Install contract dependencies
-npm install
-```
-
-## Step 2: Deploy Contracts (Already Done!)
-
-The contracts are already deployed to Stellar testnet:
-
-```json
+```typescript
+// contracts/deployed-addresses.json
 {
-  "network": "testnet",
-  "contracts": {
-    "usdc_mock": "CAXHQJ6IHN2TPAJ4NEOXJJLRRAO74BEAWA3RXHD6NSOWRBQCTVZA3ZGS",
-    "mock_rwa_token": "CCHUQ75NY5CFWIXG42RJRZQDMZ2HOAERS4RSX4EL6EEOUE6OMOFLBFVV",
-    "strwa_token": "CCCTL6UHRPOODYKYOXAW6Y3NKOFPFKB7QIYRRYGEANM2KHYYYAT4PJUS",
-    "rwa_vault": "CB3I43AX6VBYTHLVGXK3TVM5RZXLTSHT5RIHOTK2BHORNQY3RF3QH2TT",
-    "mock_oracle": "CD5XYT6WXOB567JC3QZGJ7RWHWP4N3C4GJ5LX75WDWUGL7NPXFJJC6AZ",
-    "lending_pool": "CBJM554JCHWRFG7QFBKMPAPOO4DBJPLKHSH2T7U4FRLCPDS36U44WT5Y"
-  }
+  "rwa_invoices": "CBFKZAVQ57FUWFTPS2SDHDKWZN2OI2MYRNZ4AZ2FHZ5M62FAT4OAC2SP",
+  "rwa_tbills": "CD3ZKDA3VG4PQAPXCPJV6VZJ65ACA2N7ISPUF4FN73ITMCNHKCEGMZAW",
+  "rwa_realestate": "CCSCN4NNINMSENMRRFYHW7M6D3NBMK33NE3BA5XCCT26CSCJT5ZKYF46",
+  "strwa_invoices": "CDHGP3XMH2FUQ6FFUHGLDFN5C26W7C6FW5GZ5N743M546KXWKHHK74IL",
+  "strwa_tbills": "CDGL6V3VT6HAIWNDQLYTLWFXF4O7L3TNWYD3OUEE4JNCLX3EXHH2HSEA",
+  "strwa_realestate": "CD5WDVFPWBLERKA3RYQT6L7V5J5NLHL3HP64WYJUVZMNUQLAGPLEYOZR",
+  "vault_invoices": "CCYADH4LWFOIRCZPWCIMGG46M5ZUUQ3WQUA4FF2BJNSFQUHIKTE32N2G",
+  "vault_tbills": "CAFQWK3D3QLMGSW2OL6HE3VTCLCKZKPWNTCTKBM5MFLKKZWIKTA6Z7DP",
+  "vault_realestate": "CAGUJJGFK7N5WC4CEYS3CS6QH7RIAWBPZIMB6ELVHGBJ5KBA3R3WMWLI",
+  "lending_pool": "CCW2TFZ7DWNMORNW3QVPYI5VYLNITMUMH42OKILXDLPN2J7HZQ545TWJ"
 }
 ```
 
-See: `contracts/deployed-addresses.json`
-
-## Step 3: Setup Bot Keys
-
-Generate testnet accounts for the bots:
+## 🧪 Test Everything
 
 ```bash
-./setup-bot-keys.sh
+./test-multi-asset-workflow.sh
 ```
 
-This will:
+## 📚 Complete Documentation
 
-- Create 3 funded testnet accounts
-- Generate `.env` files for all bots
-- Configure with deployed contract addresses
+- **[DEPLOYMENT_COMPLETE.md](./DEPLOYMENT_COMPLETE.md)** - Full deployment details
+- **[test-multi-asset-workflow.sh](./test-multi-asset-workflow.sh)** - Complete workflow test
+- **[contracts/deployed-addresses.json](./contracts/deployed-addresses.json)** - All addresses
 
-## Step 4: Start Bots
+## ✅ What's Working
 
-```bash
-./start-bots.sh
-```
+1. ✅ User minting (any user can mint RWA tokens)
+2. ✅ Auto-whitelisting on mint
+3. ✅ Event emissions (mint, stake, claim, etc.)
+4. ✅ All contracts deployed and initialized
 
-This will start:
+## 🎉 Success!
 
-- **Oracle Price Bot** (Port 3000) - Updates stRWA token prices
-- **Auto-Repay Bot** (Port 3001) - Automatic loan repayments from yield
-- **Liquidation Bot** (Port 3002) - Monitors and liquidates risky positions
-
-## Step 5: Verify Bots Are Running
-
-```bash
-./status-bots.sh
-```
-
-You should see all 3 bots with status: ● Running
-
-## Step 6: Test the Platform
-
-### Check Bot Health
-
-```bash
-curl http://localhost:3000/health  # Oracle
-curl http://localhost:3001/health  # Auto-Repay
-curl http://localhost:3002/health  # Liquidation
-```
-
-### View Bot Metrics
-
-```bash
-curl http://localhost:3000/metrics | jq
-curl http://localhost:3001/metrics | jq
-curl http://localhost:3002/metrics | jq
-```
-
-### View Live Logs
-
-```bash
-tail -f logs/oracle-price-bot.log
-tail -f logs/auto-repay-bot.log
-tail -f logs/liquidation-bot.log
-```
-
-## Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                  Orion RWA Lending                      │
-└─────────────────────────────────────────────────────────┘
-
-┌──────────────────────┐
-│  Smart Contracts     │
-│  (Stellar Testnet)   │
-├──────────────────────┤
-│ • USDC Mock          │
-│ • RWA Token          │
-│ • stRWA Token        │
-│ • Vault              │
-│ • Oracle             │
-│ • Lending Pool       │
-└──────────┬───────────┘
-           │
-┌──────────▼───────────┐
-│  Bot Infrastructure  │
-├──────────────────────┤
-│ • Oracle Price Bot   │───→ Fetches prices, updates oracle
-│ • Auto-Repay Bot     │───→ Repays loans from yield
-│ • Liquidation Bot    │───→ Liquidates risky positions
-└──────────────────────┘
-```
-
-## Platform Flow
-
-### 1. User Stakes RWA Tokens
-
-```
-User deposits RWA tokens → Vault
-Vault mints stRWA tokens 1:1 → User
-```
-
-### 2. User Borrows USDC
-
-```
-User provides stRWA tokens as collateral
-Lending Pool checks health factor (≥140%)
-Lending Pool transfers USDC → User
-```
-
-### 3. Yield Distribution
-
-```
-Admin funds yield → Vault
-Vault distributes proportionally to stakers
-Auto-Repay Bot uses yield to repay loans
-```
-
-### 4. Price Updates
-
-```
-Oracle Price Bot fetches real-world prices
-Bot submits to Oracle contract every 60s
-Lending Pool uses prices for health calculations
-```
-
-### 5. Liquidation
-
-```
-Liquidation Bot monitors loan health factors
-If health < 110%, bot liquidates position
-Liquidator receives 10% reward
-```
-
-## Common Commands
-
-### Bot Management
-
-```bash
-# Start all bots
-./start-bots.sh
-
-# Stop all bots
-./stop-bots.sh
-
-# Check bot status
-./status-bots.sh
-
-# View logs
-tail -f logs/*.log
-
-# Restart bots
-./stop-bots.sh && ./start-bots.sh
-```
-
-### Contract Development
-
-```bash
-# Build contracts
-stellar contract build
-
-# Run tests
-cargo test --all
-
-# Deploy to testnet
-./deploy-testnet.sh
-```
-
-### Frontend (Coming Soon)
-
-```bash
-# Start frontend
-cd packages/nextjs
-npm run dev
-
-# Access at http://localhost:3000
-```
-
-## Project Structure
-
-```
-scafold-stellar/
-├── contracts/              # Smart contracts (Rust)
-│   ├── usdc-mock/
-│   ├── mock-rwa-token/
-│   ├── strwa-token/
-│   ├── rwa-vault/
-│   ├── mock-oracle/
-│   └── lending-pool/
-│
-├── bots/                   # Bot infrastructure (TypeScript)
-│   ├── oracle-price-bot/
-│   ├── auto-repay-bot/
-│   ├── liquidation-bot/
-│   ├── orchestrator/
-│   └── shared/
-│
-├── packages/              # Frontend (Next.js) - Coming Soon
-│   └── nextjs/
-│
-├── logs/                  # Bot logs
-│
-├── start-bots.sh         # Start all bots
-├── stop-bots.sh          # Stop all bots
-├── status-bots.sh        # Check bot status
-└── setup-bot-keys.sh     # Generate bot keys
-```
-
-## Troubleshooting
-
-### Bots won't start
-
-```bash
-# Check Node.js version
-node -v  # Should be v18+
-
-# Check if .env files exist
-ls -la bots/*/.env
-
-# Re-run setup
-./setup-bot-keys.sh
-```
-
-### Port already in use
-
-```bash
-# Check what's using the ports
-lsof -i :3000
-lsof -i :3001
-lsof -i :3002
-
-# Kill the processes
-kill <PID>
-```
-
-### Bot crashes
-
-```bash
-# Check logs
-cat logs/oracle-price-bot.log
-cat logs/auto-repay-bot.log
-cat logs/liquidation-bot.log
-
-# Check for errors
-grep -i error logs/*.log
-```
-
-## Next Steps
-
-1. **Review Bot Logs**: Check that bots are operating correctly
-2. **Monitor Metrics**: Use the HTTP APIs to view bot metrics
-3. **Test Contracts**: Interact with deployed contracts
-4. **Integrate Frontend**: Connect frontend to contracts and bots
-5. **Deploy to Production**: When ready, deploy to mainnet
-
-## Documentation
-
-- [Bot Management Guide](BOT_MANAGEMENT.md) - Detailed bot operations
-- [Contract Specs](contracts/README.md) - Smart contract documentation
-- [Auto-Repay Bot Spec](AUTO_REPAY_BOT_SPEC.md) - Auto-repay bot details
-- [Liquidation Bot Spec](LIQUIDATION_BOT_SPEC.md) - Liquidation bot details
-
-## Support
-
-For issues or questions:
-
-- Check logs: `logs/<bot-name>.log`
-- View status: `./status-bots.sh`
-- Restart: `./stop-bots.sh && ./start-bots.sh`
-
-## Security Notes
-
-⚠️ **IMPORTANT:**
-
-- These are testnet deployments
-- Bot keys are for testing only
-- Never use testnet keys on mainnet
-- Keep secret keys secure
-- Never commit `.env` files to git
-
-## What's Next?
-
-Now that the platform is running, you can:
-
-1. **Test the platform** with the deployed contracts
-2. **Monitor bot operations** using the status and metrics endpoints
-3. **Implement frontend** to interact with contracts
-4. **Add multi-asset support** (Invoices, T-Bills, Real Estate)
-5. **Deploy to mainnet** when ready
-
-Happy building! 🚀
+All 10 contracts deployed, initialized, and tested. Ready for frontend integration!
