@@ -1,41 +1,40 @@
 // src/bot.ts
-import { Logger } from './monitoring/logger';
-import { MetricsCollector } from './monitoring/metrics';
-import { AlertService } from './monitoring/alerts';
-import { PriceFetcher } from './fetcher/base';
-import { PriceAggregator } from './processor/aggregator';
-import { PriceValidator } from './processor/validator';
-import { PriceSmoother, SmoothingConfig } from './processor/smoother';
-import { TransactionManager } from './blockchain/transaction';
-import { NetworkConfig } from './config/network';
-import { DATA_SOURCES, DataSource } from './config/sources';
-import { VALIDATION_CONFIG, ValidationConfig } from './config/validation';
-import { ChainlinkFetcher } from './fetcher/chainlink';
-import { FranklinTempletonFetcher } from './fetcher/franklin';
+import { Logger } from "./monitoring/logger";
+import { MetricsCollector } from "./monitoring/metrics";
+import { AlertService } from "./monitoring/alerts";
+import { PriceFetcher } from "./fetcher/base";
+import { PriceAggregator } from "./processor/aggregator";
+import { PriceValidator } from "./processor/validator";
+import { PriceSmoother, SmoothingConfig } from "./processor/smoother";
+import { TransactionManager } from "./blockchain/transaction";
+import { NetworkConfig } from "./config/network";
+import { DATA_SOURCES, DataSource } from "./config/sources";
+import { VALIDATION_CONFIG, ValidationConfig } from "./config/validation";
+import { ChainlinkFetcher } from "./fetcher/chainlink";
+import { FranklinTempletonFetcher } from "./fetcher/franklin";
 
 export interface BotConfig {
-    dataSources: Record<string, DataSource[]>;
-    validation: Record<string, ValidationConfig>;
-    smoothing: SmoothingConfig;
-    schedule: any;
-    alerting?: any;
+  dataSources: Record<string, DataSource[]>;
+  validation: Record<string, ValidationConfig>;
+  smoothing: SmoothingConfig;
+  schedule: any;
+  alerting?: any;
 }
 
 function createFetcher(source: DataSource): PriceFetcher {
-    switch (source.type) {
-        case 'chainlink':
-            return new ChainlinkFetcher(source);
-        case 'api':
-            if (source.name.includes('Franklin')) {
-                return new FranklinTempletonFetcher(source);
-            }
-            // Add other api fetchers here
-            throw new Error(`Unsupported API fetcher: ${source.name}`);
-        default:
-            throw new Error(`Unsupported fetcher type: ${source.type}`);
-    }
+  switch (source.type) {
+    case "chainlink":
+      return new ChainlinkFetcher(source);
+    case "api":
+      if (source.name.includes("Franklin")) {
+        return new FranklinTempletonFetcher(source);
+      }
+      // Add other api fetchers here
+      throw new Error(`Unsupported API fetcher: ${source.name}`);
+    default:
+      throw new Error(`Unsupported fetcher type: ${source.type}`);
+  }
 }
-
 
 export class OraclePriceBot {
   private logger: Logger;
@@ -53,9 +52,9 @@ export class OraclePriceBot {
 
   constructor(
     private config: BotConfig,
-    private networkConfig: NetworkConfig
+    private networkConfig: NetworkConfig,
   ) {
-    this.logger = new Logger('OraclePriceBot');
+    this.logger = new Logger("OraclePriceBot");
     this.metrics = new MetricsCollector();
     this.alerts = new AlertService(config.alerting);
 
@@ -69,7 +68,7 @@ export class OraclePriceBot {
 
   private initializeFetchers(): void {
     for (const [asset, sources] of Object.entries(this.config.dataSources)) {
-      const fetchers = sources.map(source => {
+      const fetchers = sources.map((source) => {
         return createFetcher(source);
       });
       this.fetchers.set(asset, fetchers);
@@ -77,7 +76,7 @@ export class OraclePriceBot {
   }
 
   async start(): Promise<void> {
-    this.logger.info('Starting Oracle Price Bot...');
+    this.logger.info("Starting Oracle Price Bot...");
 
     for (const asset of Object.keys(this.config.dataSources)) {
       await this.startAssetUpdates(asset);
@@ -86,7 +85,7 @@ export class OraclePriceBot {
     // Start monitoring
     this.startHealthCheck();
 
-    this.logger.info('Oracle Price Bot started successfully');
+    this.logger.info("Oracle Price Bot started successfully");
   }
 
   private async startAssetUpdates(asset: string): Promise<void> {
@@ -96,7 +95,7 @@ export class OraclePriceBot {
     if (schedule.timeBased.enabled) {
       const interval = setInterval(
         () => this.updateAssetPrice(asset),
-        schedule.timeBased.intervalSeconds * 1000
+        schedule.timeBased.intervalSeconds * 1000,
       );
       this.updateIntervals.set(asset, interval);
     }
@@ -105,7 +104,7 @@ export class OraclePriceBot {
     if (schedule.eventBased.enabled) {
       setInterval(
         () => this.checkPriceChange(asset),
-        schedule.eventBased.checkIntervalSeconds * 1000
+        schedule.eventBased.checkIntervalSeconds * 1000,
       );
     }
 
@@ -115,7 +114,7 @@ export class OraclePriceBot {
 
   public async updateAssetPrice(asset: string): Promise<void> {
     if (this.paused) {
-      this.logger.debug('Bot is paused, skipping update');
+      this.logger.debug("Bot is paused, skipping update");
       return;
     }
 
@@ -127,21 +126,21 @@ export class OraclePriceBot {
       const pricePromises = fetchers.map(async (f) => {
         const fetchStartTime = Date.now();
         try {
-            const price = await f.fetchPrice(asset);
-            const fetchEndTime = Date.now();
-            return {
-                price,
-                sourceName: f.getName(),
-                weight: f.getWeight(),
-                responseTime: fetchEndTime - fetchStartTime,
-                status: 'fulfilled' as const,
-            };
+          const price = await f.fetchPrice(asset);
+          const fetchEndTime = Date.now();
+          return {
+            price,
+            sourceName: f.getName(),
+            weight: f.getWeight(),
+            responseTime: fetchEndTime - fetchStartTime,
+            status: "fulfilled" as const,
+          };
         } catch (error) {
-            return {
-                sourceName: f.getName(),
-                status: 'rejected' as const,
-                reason: error,
-            };
+          return {
+            sourceName: f.getName(),
+            status: "rejected" as const,
+            reason: error,
+          };
         }
       });
       const results = await Promise.all(pricePromises);
@@ -150,10 +149,14 @@ export class OraclePriceBot {
       const weights: number[] = [];
 
       for (const result of results) {
-        if (result.status === 'fulfilled') {
+        if (result.status === "fulfilled") {
           prices.push(result.price);
           weights.push(result.weight);
-          this.metrics.recordSourceSuccess(asset, result.sourceName, result.responseTime);
+          this.metrics.recordSourceSuccess(
+            asset,
+            result.sourceName,
+            result.responseTime,
+          );
         } else {
           this.logger.warn(`Source ${result.sourceName} failed`, {
             error: result.reason,
@@ -165,7 +168,7 @@ export class OraclePriceBot {
       // 2. Validate minimum sources
       if (prices.length < this.config.validation[asset].minSources) {
         throw new Error(
-          `Insufficient price sources: ${prices.length} < ${this.config.validation[asset].minSources}`
+          `Insufficient price sources: ${prices.length} < ${this.config.validation[asset].minSources}`,
         );
       }
 
@@ -180,7 +183,7 @@ export class OraclePriceBot {
       const smoothedPrice = this.smoother.smooth(
         asset,
         aggregatedPrice,
-        this.config.smoothing
+        this.config.smoothing,
       );
 
       // 6. Submit to blockchain
@@ -188,26 +191,25 @@ export class OraclePriceBot {
       const txHash = await this.txManager.submitPrice(
         asset,
         smoothedPrice,
-        timestamp
+        timestamp,
       );
 
       // 7. Record metrics
       const latency = Date.now() - startTime;
       this.metrics.recordUpdate(asset, smoothedPrice, latency, true);
 
-      this.logger.info('Price updated successfully', {
+      this.logger.info("Price updated successfully", {
         asset,
         price: smoothedPrice,
         txHash,
         latency,
       });
-
     } catch (error: any) {
-      this.logger.error('Price update failed', { asset, error: error.message });
+      this.logger.error("Price update failed", { asset, error: error.message });
       this.metrics.recordUpdate(asset, 0, Date.now() - startTime, false);
 
       this.alerts.send({
-        severity: 'critical',
+        severity: "critical",
         message: `Price update failed for ${asset}`,
         timestamp: new Date(),
         metadata: { error: error.message },
@@ -225,17 +227,23 @@ export class OraclePriceBot {
 
       if (!lastPrice) return;
 
-      const changePercent = Math.abs((currentPrice - lastPrice) / lastPrice) * 100;
+      const changePercent =
+        Math.abs((currentPrice - lastPrice) / lastPrice) * 100;
 
-      if (changePercent >= this.config.schedule.eventBased.priceChangeThreshold) {
-        this.logger.info('Price change threshold exceeded, triggering update', {
+      if (
+        changePercent >= this.config.schedule.eventBased.priceChangeThreshold
+      ) {
+        this.logger.info("Price change threshold exceeded, triggering update", {
           asset,
           changePercent,
         });
         await this.updateAssetPrice(asset);
       }
     } catch (error: any) {
-      this.logger.error('Price change check failed', { asset, error: error.message });
+      this.logger.error("Price change check failed", {
+        asset,
+        error: error.message,
+      });
     }
   }
 
@@ -247,13 +255,13 @@ export class OraclePriceBot {
   }
 
   async stop(): Promise<void> {
-    this.logger.info('Stopping Oracle Price Bot...');
+    this.logger.info("Stopping Oracle Price Bot...");
 
     for (const interval of this.updateIntervals.values()) {
       clearInterval(interval);
     }
 
     this.updateIntervals.clear();
-    this.logger.info('Oracle Price Bot stopped');
+    this.logger.info("Oracle Price Bot stopped");
   }
 }

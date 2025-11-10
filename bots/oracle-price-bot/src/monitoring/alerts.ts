@@ -2,35 +2,35 @@
 import { Logger } from "./logger";
 
 export interface Alert {
-    severity: 'info' | 'warning' | 'critical';
-    message: string;
-    timestamp: Date;
-    metadata?: Record<string, any>;
-  }
-  
-  export class AlertService {
-    private alerts: Alert[] = [];
-    private logger = new Logger('AlertService');
-  
-    constructor(private config?: any) {}
+  severity: "info" | "warning" | "critical";
+  message: string;
+  timestamp: Date;
+  metadata?: Record<string, any>;
+}
 
-    send(alert: Alert): void {
-      this.alerts.push(alert);
-  
-      // Send to external monitoring (Slack, PagerDuty, etc.)
-      if (alert.severity === 'critical') {
-        // this.sendToSlack(alert);
-        // this.sendToPagerDuty(alert);
-      }
-  
-      this.logger.log(alert.severity, alert.message, alert.metadata);
+export class AlertService {
+  private alerts: Alert[] = [];
+  private logger = new Logger("AlertService");
+
+  constructor(private config?: any) {}
+
+  send(alert: Alert): void {
+    this.alerts.push(alert);
+
+    // Send to external monitoring (Slack, PagerDuty, etc.)
+    if (alert.severity === "critical") {
+      // this.sendToSlack(alert);
+      // this.sendToPagerDuty(alert);
     }
 
-    checkHealth() {
-        // Simple alert health check for hackathon
-        const criticalAlerts = this.alerts.filter(a => a.severity === 'critical');
-        if (criticalAlerts.length > 0) {
-            console.log(`🚨 ${criticalAlerts.length} critical alerts in last period`);
-        }
+    this.logger.log(alert.severity, alert.message, alert.metadata);
+  }
+
+  checkHealth() {
+    // Simple alert health check for hackathon
+    const criticalAlerts = this.alerts.filter((a) => a.severity === "critical");
+    if (criticalAlerts.length > 0) {
+      console.log(`🚨 ${criticalAlerts.length} critical alerts in last period`);
     }
   }
+}

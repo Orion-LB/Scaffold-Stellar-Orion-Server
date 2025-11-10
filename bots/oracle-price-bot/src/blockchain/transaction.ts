@@ -1,6 +1,6 @@
 // bots/oracle-price-bot/src/blockchain/transaction.ts
-import * as StellarSdk from '@stellar/stellar-sdk';
-import { NetworkConfig } from '../config/network';
+import * as StellarSdk from "@stellar/stellar-sdk";
+import { NetworkConfig } from "../config/network";
 
 export class TransactionManager {
   private server: StellarSdk.SorobanRpc.Server;
@@ -14,16 +14,16 @@ export class TransactionManager {
   async submitPrice(
     assetAddress: string,
     price: number,
-    timestamp: number
+    timestamp: number,
   ): Promise<string> {
     const priceScaled = BigInt(Math.round(price * 1_000_000)); // 6 decimals
     const botAddress = this.keypair.publicKey();
 
     const args = [
-      StellarSdk.nativeToScVal(assetAddress, {type: 'address'}),
-      StellarSdk.nativeToScVal(priceScaled, {type: 'i128'}),
-      StellarSdk.nativeToScVal(timestamp, {type: 'u64'}),
-      StellarSdk.nativeToScVal(botAddress, {type: 'address'}),
+      StellarSdk.nativeToScVal(assetAddress, { type: "address" }),
+      StellarSdk.nativeToScVal(priceScaled, { type: "i128" }),
+      StellarSdk.nativeToScVal(timestamp, { type: "u64" }),
+      StellarSdk.nativeToScVal(botAddress, { type: "address" }),
     ];
 
     const account = await this.server.getAccount(botAddress);
@@ -31,9 +31,10 @@ export class TransactionManager {
 
     let transaction = new StellarSdk.TransactionBuilder(account, {
       fee: StellarSdk.BASE_FEE,
-      networkPassphrase: this.config.networkPassphrase || StellarSdk.Networks.TESTNET,
+      networkPassphrase:
+        this.config.networkPassphrase || StellarSdk.Networks.TESTNET,
     })
-      .addOperation(contract.call('set_price', ...args))
+      .addOperation(contract.call("set_price", ...args))
       .setTimeout(30)
       .build();
 
@@ -47,7 +48,7 @@ export class TransactionManager {
     // Assemble
     transaction = StellarSdk.SorobanRpc.assembleTransaction(
       transaction,
-      simulated
+      simulated,
     ).build();
 
     // Sign
@@ -60,13 +61,13 @@ export class TransactionManager {
     let result = await this.server.getTransaction(response.hash);
     let attempts = 0;
 
-    while (result.status === 'NOT_FOUND' && attempts < 20) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    while (result.status === "NOT_FOUND" && attempts < 20) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       result = await this.server.getTransaction(response.hash);
       attempts++;
     }
 
-    if (result.status !== 'SUCCESS') {
+    if (result.status !== "SUCCESS") {
       throw new Error(`Transaction failed: ${result.status}`);
     }
 

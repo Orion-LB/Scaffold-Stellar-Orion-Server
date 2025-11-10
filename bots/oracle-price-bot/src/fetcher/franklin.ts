@@ -6,7 +6,7 @@ export class FranklinTempletonFetcher extends PriceFetcher {
     return this.fetchWithRetry(async () => {
       const response = await fetch(this.config.url, {
         headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
+          Authorization: `Bearer ${this.config.apiKey}`,
         },
       });
       const data = await response.json();

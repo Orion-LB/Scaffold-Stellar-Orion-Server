@@ -21,23 +21,23 @@ describe("PriceSmoother", () => {
     const config = { enabled: true, alpha: 0.5, windowSize: 5 };
 
     // Feed multiple prices
-    smoother.smooth("TBILL", 1.00, config);
-    smoother.smooth("TBILL", 1.10, config);
-    const result = smoother.smooth("TBILL", 1.20, config);
+    smoother.smooth("TBILL", 1.0, config);
+    smoother.smooth("TBILL", 1.1, config);
+    const result = smoother.smooth("TBILL", 1.2, config);
 
     // Should be smoothed (less than raw 1.20)
-    expect(result).toBeLessThan(1.20);
-    expect(result).toBeGreaterThan(1.00);
+    expect(result).toBeLessThan(1.2);
+    expect(result).toBeGreaterThan(1.0);
   });
 
   it("should maintain separate histories per asset", () => {
     const config = { enabled: true, alpha: 0.5, windowSize: 5 };
 
-    smoother.smooth("TBILL", 1.00, config);
-    smoother.smooth("BOND", 2.00, config);
+    smoother.smooth("TBILL", 1.0, config);
+    smoother.smooth("BOND", 2.0, config);
 
-    const tbillResult = smoother.smooth("TBILL", 1.10, config);
-    const bondResult = smoother.smooth("BOND", 2.10, config);
+    const tbillResult = smoother.smooth("TBILL", 1.1, config);
+    const bondResult = smoother.smooth("BOND", 2.1, config);
 
     expect(tbillResult).not.toBe(bondResult);
   });

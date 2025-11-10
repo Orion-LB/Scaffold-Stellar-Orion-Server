@@ -8,9 +8,7 @@ export interface PriceFetchResult {
 }
 
 export abstract class PriceFetcher {
-  constructor(
-    protected config: DataSource
-  ) {}
+  constructor(protected config: DataSource) {}
 
   abstract fetchPrice(asset: string): Promise<number>;
 
@@ -30,7 +28,7 @@ export abstract class PriceFetcher {
       } catch (error: any) {
         lastError = error;
         const delay = 1000 * Math.pow(2, i); // exponential backoff
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
     throw lastError;
@@ -38,12 +36,12 @@ export abstract class PriceFetcher {
 
   protected async fetchWithTimeout<T>(
     fn: () => Promise<T>,
-    timeout: number
+    timeout: number,
   ): Promise<T> {
     return Promise.race([
       fn(),
       new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), timeout)
+        setTimeout(() => reject(new Error("Request timeout")), timeout),
       ),
     ]);
   }
