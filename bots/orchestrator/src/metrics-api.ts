@@ -1,7 +1,7 @@
 // bots/orchestrator/src/metrics-api.ts
-import express, { Express } from 'express';
-import { Server } from 'http';
-import { BotOrchestrator } from './orchestrator';
+import express, { Express } from "express";
+import { Server } from "http";
+import { BotOrchestrator } from "./orchestrator";
 
 export class MetricsAPI {
   private app: Express;
@@ -14,16 +14,16 @@ export class MetricsAPI {
 
   private setupRoutes(): void {
     // Health check
-    this.app.get('/health', (req, res) => {
+    this.app.get("/health", (req, res) => {
       res.json({
-        status: 'ok',
-        service: 'bot-orchestrator',
+        status: "ok",
+        service: "bot-orchestrator",
         timestamp: new Date().toISOString(),
       });
     });
 
     // All metrics
-    this.app.get('/metrics/all', (req, res) => {
+    this.app.get("/metrics/all", (req, res) => {
       try {
         const metrics = this.orchestrator.getMetrics();
         res.json(metrics);
@@ -33,7 +33,7 @@ export class MetricsAPI {
     });
 
     // Oracle metrics
-    this.app.get('/metrics/oracle', (req, res) => {
+    this.app.get("/metrics/oracle", (req, res) => {
       try {
         const metrics = this.orchestrator.getMetrics();
         res.json(metrics.oracle);
@@ -43,7 +43,7 @@ export class MetricsAPI {
     });
 
     // Auto-Repay metrics
-    this.app.get('/metrics/auto-repay', (req, res) => {
+    this.app.get("/metrics/auto-repay", (req, res) => {
       try {
         const metrics = this.orchestrator.getMetrics();
         res.json(metrics.autoRepay);
@@ -53,7 +53,7 @@ export class MetricsAPI {
     });
 
     // Liquidation metrics
-    this.app.get('/metrics/liquidation', (req, res) => {
+    this.app.get("/metrics/liquidation", (req, res) => {
       try {
         const metrics = this.orchestrator.getMetrics();
         res.json(metrics.liquidation);
@@ -63,7 +63,7 @@ export class MetricsAPI {
     });
 
     // Bot health status
-    this.app.get('/status', async (req, res) => {
+    this.app.get("/status", async (req, res) => {
       try {
         const health = await this.orchestrator.checkHealth();
         res.json({
@@ -76,9 +76,9 @@ export class MetricsAPI {
     });
 
     // Contract addresses (for debugging)
-    this.app.get('/contracts', (req, res) => {
+    this.app.get("/contracts", (req, res) => {
       try {
-        const contracts = this.orchestrator['sharedConfig'].getAllContracts();
+        const contracts = this.orchestrator["sharedConfig"].getAllContracts();
         res.json(contracts);
       } catch (error: any) {
         res.status(500).json({ error: error.message });
@@ -92,14 +92,14 @@ export class MetricsAPI {
       console.log(`   Health: http://localhost:${port}/health`);
       console.log(`   Metrics: http://localhost:${port}/metrics/all`);
       console.log(`   Status: http://localhost:${port}/status`);
-      console.log('');
+      console.log("");
     });
   }
 
   stop(): void {
     if (this.server) {
       this.server.close();
-      console.log('📊 Metrics API stopped');
+      console.log("📊 Metrics API stopped");
     }
   }
 }

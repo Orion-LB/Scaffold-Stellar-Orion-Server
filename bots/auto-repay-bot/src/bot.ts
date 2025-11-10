@@ -1,14 +1,14 @@
 // bots/auto-repay-bot/src/bot.ts
-import { Logger } from './monitoring/logger';
-import { MetricsCollector } from './monitoring/metrics';
-import { EventMonitor } from './monitor/events';
-import { BorrowerTracker } from './monitor/borrowers';
-import { EligibilityChecker } from './processor/eligibility';
-import { BatchProcessor } from './processor/batch';
-import { RepaymentExecutor } from './executor/transaction';
-import { NetworkConfig } from './config/network';
-import { EventBasedTrigger } from './triggers/event-based';
-import { TimeBasedTrigger } from './triggers/time-based';
+import { Logger } from "./monitoring/logger";
+import { MetricsCollector } from "./monitoring/metrics";
+import { EventMonitor } from "./monitor/events";
+import { BorrowerTracker } from "./monitor/borrowers";
+import { EligibilityChecker } from "./processor/eligibility";
+import { BatchProcessor } from "./processor/batch";
+import { RepaymentExecutor } from "./executor/transaction";
+import { NetworkConfig } from "./config/network";
+import { EventBasedTrigger } from "./triggers/event-based";
+import { TimeBasedTrigger } from "./triggers/time-based";
 
 export class AutoRepayBot {
   private logger: Logger;
@@ -22,19 +22,26 @@ export class AutoRepayBot {
   private timeBasedTrigger: TimeBasedTrigger;
 
   constructor(private config: NetworkConfig) {
-    this.logger = new Logger('AutoRepayBot');
+    this.logger = new Logger("AutoRepayBot");
     this.metrics = new MetricsCollector();
     this.eventMonitor = new EventMonitor(config);
     this.borrowerTracker = new BorrowerTracker(config);
     this.executor = new RepaymentExecutor(config);
     this.eligibilityChecker = new EligibilityChecker(config);
     this.batchProcessor = new BatchProcessor(this.executor, this.logger);
-    this.eventBasedTrigger = new EventBasedTrigger(this.eventMonitor, this.processAutoRepays.bind(this), this.logger);
-    this.timeBasedTrigger = new TimeBasedTrigger(this.processAutoRepays.bind(this), this.logger);
+    this.eventBasedTrigger = new EventBasedTrigger(
+      this.eventMonitor,
+      this.processAutoRepays.bind(this),
+      this.logger,
+    );
+    this.timeBasedTrigger = new TimeBasedTrigger(
+      this.processAutoRepays.bind(this),
+      this.logger,
+    );
   }
 
   async start(): Promise<void> {
-    this.logger.info('Starting Auto-Repay Bot...');
+    this.logger.info("Starting Auto-Repay Bot...");
 
     // Load known borrowers
     await this.borrowerTracker.loadBorrowers();
@@ -48,7 +55,7 @@ export class AutoRepayBot {
     // Start health monitoring
     this.startHealthMonitoring();
 
-    this.logger.info('Auto-Repay Bot started successfully');
+    this.logger.info("Auto-Repay Bot started successfully");
   }
 
   public async processAutoRepays(): Promise<void> {
@@ -57,17 +64,16 @@ export class AutoRepayBot {
     try {
       // 1. Get all known borrowers
       const borrowers = this.borrowerTracker.getBorrowers();
-      this.logger.info('Processing auto-repays', {
+      this.logger.info("Processing auto-repays", {
         borrowers: borrowers.length,
       });
       this.metrics.metrics.activeBorrowers = borrowers.length;
 
       // 2. Check eligibility
-      const eligible = await this.eligibilityChecker.checkAllBorrowers(
-        borrowers
-      );
+      const eligible =
+        await this.eligibilityChecker.checkAllBorrowers(borrowers);
 
-      this.logger.info('Eligible borrowers found', {
+      this.logger.info("Eligible borrowers found", {
         eligible: eligible.length,
       });
 
@@ -84,26 +90,24 @@ export class AutoRepayBot {
       const processingTime = Date.now() - startTime;
       this.metrics.metrics.lastProcessedTime = Date.now() / 1000;
 
-
       for (const result of results) {
         this.metrics.recordRepayment(
           result.success,
           result.amount,
-          processingTime
+          processingTime,
         );
       }
 
       // 5. Log summary
-      const successful = results.filter(r => r.success).length;
-      this.logger.info('Auto-repay batch completed', {
+      const successful = results.filter((r) => r.success).length;
+      this.logger.info("Auto-repay batch completed", {
         total: results.length,
         successful,
         failed: results.length - successful,
         processingTime,
       });
-
     } catch (error: any) {
-      this.logger.error('Auto-repay processing failed', {
+      this.logger.error("Auto-repay processing failed", {
         error: error.message,
       });
     }
@@ -116,8 +120,8 @@ export class AutoRepayBot {
   }
 
   async stop(): Promise<void> {
-    this.logger.info('Stopping Auto-Repay Bot...');
+    this.logger.info("Stopping Auto-Repay Bot...");
     // Cleanup intervals (store references for cleanup)
-    this.logger.info('Auto-Repay Bot stopped');
+    this.logger.info("Auto-Repay Bot stopped");
   }
 }

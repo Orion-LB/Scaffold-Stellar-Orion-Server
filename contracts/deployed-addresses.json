@@ -2,11 +2,17 @@
   "network": "testnet",
   "contracts": {
     "usdc_mock": "CAXHQJ6IHN2TPAJ4NEOXJJLRRAO74BEAWA3RXHD6NSOWRBQCTVZA3ZGS",
-    "mock_rwa_token": "CCHUQ75NY5CFWIXG42RJRZQDMZ2HOAERS4RSX4EL6EEOUE6OMOFLBFVV",
-    "strwa_token": "CCCTL6UHRPOODYKYOXAW6Y3NKOFPFKB7QIYRRYGEANM2KHYYYAT4PJUS",
-    "rwa_vault": "CB3I43AX6VBYTHLVGXK3TVM5RZXLTSHT5RIHOTK2BHORNQY3RF3QH2TT",
-    "mock_oracle": "CD5XYT6WXOB567JC3QZGJ7RWHWP4N3C4GJ5LX75WDWUGL7NPXFJJC6AZ",
-    "lending_pool": "CBJM554JCHWRFG7QFBKMPAPOO4DBJPLKHSH2T7U4FRLCPDS36U44WT5Y"
+    "rwa_invoices": "C...",
+    "rwa_tbills": "C...",
+    "rwa_realestate": "C...",
+    "strwa_invoices": "C...",
+    "strwa_tbills": "C...",
+    "strwa_realestate": "C...",
+    "vault_invoices": "C...",
+    "vault_tbills": "C...",
+    "vault_realestate": "C...",
+    "lending_pool": "CBJM554JCHWRFG7QFBKMPAPOO4DBJPLKHSH2T7U4FRLCPDS36U44WT5Y",
+    "mock_oracle": "CD5XYT6WXOB567JC3QZGJ7RWHWP4N3C4GJ5LX75WDWUGL7NPXFJJC6AZ"
   },
   "deployed_at": "2025-11-09T12:00:00Z",
   "deployer_address": "GAADPNKZXJEJ6DDDCSGZH3EIIUB2BUKOMH3RQSNZZEKA5GTXRDZBLO3D",

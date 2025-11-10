@@ -1,5 +1,34 @@
 use soroban_sdk::{contract, contractimpl, symbol_short, token, Address, Env, Map, Symbol, contracttype, IntoVal};
 
+// RWA token client interface
+pub struct RwaTokenClient<'a> {
+    env: &'a Env,
+    address: &'a Address,
+}
+
+impl<'a> RwaTokenClient<'a> {
+    pub fn new(env: &'a Env, address: &'a Address) -> Self {
+        RwaTokenClient { env, address }
+    }
+
+    pub fn allowed(&self, account: &Address) -> bool {
+        self.env.invoke_contract(
+            self.address,
+            &symbol_short!("allowed"),
+            (account,).into_val(self.env),
+        )
+    }
+
+    pub fn allow_user(&self, user: &Address) {
+        let vault_address = self.env.current_contract_address();
+        self.env.invoke_contract(
+            self.address,
+            &symbol_short!("allow_user"),
+            (user, vault_address).into_val(self.env),
+        );
+    }
+}
+
 // StRWA token client interface - manually defined to avoid circular dependency
 pub struct StRwaTokenClient<'a> {
     env: &'a Env,
@@ -127,6 +156,14 @@ impl RwaVault {
         
         let rwa_addr: Address = e.storage().instance().get(&RWA_TOKEN_KEY).unwrap();
         let strwa_addr: Address = e.storage().instance().get(&STRWA_TOKEN_KEY).unwrap();
+
+        let rwa_token_client = RwaTokenClient::new(e, &rwa_addr);
+
+        // Check if user is allowed to hold RWA tokens
+        if !rwa_token_client.allowed(&user) {
+            // If not, the vault (as manager) allows them
+            rwa_token_client.allow_user(&user);
+        }
         
         let rwa_token = token::Client::new(e, &rwa_addr);
         rwa_token.transfer_from(

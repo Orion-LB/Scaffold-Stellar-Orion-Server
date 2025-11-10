@@ -4,7 +4,7 @@
  * Easy-to-use TypeScript SDK for interacting with the Stellar RWA Lending smart contracts
  */
 
-import * as StellarSdk from '@stellar/stellar-sdk';
+import * as StellarSdk from "@stellar/stellar-sdk";
 
 // ============================================================================
 // Types
@@ -58,19 +58,19 @@ export interface SignFunction {
 
 export const NETWORKS: Record<string, NetworkConfig> = {
   testnet: {
-    networkPassphrase: 'Test SDF Network ; September 2015',
-    rpcUrl: 'https://soroban-testnet.stellar.org:443',
-    horizonUrl: 'https://horizon-testnet.stellar.org',
+    networkPassphrase: "Test SDF Network ; September 2015",
+    rpcUrl: "https://soroban-testnet.stellar.org:443",
+    horizonUrl: "https://horizon-testnet.stellar.org",
   },
   futurenet: {
-    networkPassphrase: 'Test SDF Future Network ; October 2022',
-    rpcUrl: 'https://rpc-futurenet.stellar.org:443',
-    horizonUrl: 'https://horizon-futurenet.stellar.org',
+    networkPassphrase: "Test SDF Future Network ; October 2022",
+    rpcUrl: "https://rpc-futurenet.stellar.org:443",
+    horizonUrl: "https://horizon-futurenet.stellar.org",
   },
   mainnet: {
-    networkPassphrase: 'Public Global Stellar Network ; September 2015',
-    rpcUrl: 'https://mainnet.sorobanrpc.com:443',
-    horizonUrl: 'https://horizon.stellar.org',
+    networkPassphrase: "Public Global Stellar Network ; September 2015",
+    rpcUrl: "https://mainnet.sorobanrpc.com:443",
+    horizonUrl: "https://horizon.stellar.org",
   },
 };
 
@@ -104,7 +104,7 @@ export class StellarLendingSDK {
     sourceAccount: string,
     contractId: string,
     method: string,
-    args: StellarSdk.xdr.ScVal[]
+    args: StellarSdk.xdr.ScVal[],
   ): Promise<StellarSdk.Transaction> {
     const account = await this.server.getAccount(sourceAccount);
     const contract = new StellarSdk.Contract(contractId);
@@ -120,7 +120,10 @@ export class StellarLendingSDK {
     const simulated = await this.server.simulateTransaction(transaction);
 
     if (StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
-      return StellarSdk.SorobanRpc.assembleTransaction(transaction, simulated).build();
+      return StellarSdk.SorobanRpc.assembleTransaction(
+        transaction,
+        simulated,
+      ).build();
     } else {
       throw new Error(`Simulation failed: ${JSON.stringify(simulated)}`);
     }
@@ -128,7 +131,7 @@ export class StellarLendingSDK {
 
   private async submitTransaction(
     transaction: StellarSdk.Transaction,
-    signFn: SignFunction
+    signFn: SignFunction,
   ): Promise<StellarSdk.SorobanRpc.Api.GetTransactionResponse> {
     const signedTx = await signFn(transaction);
     const response = await this.server.sendTransaction(signedTx);
@@ -136,13 +139,13 @@ export class StellarLendingSDK {
     // Poll for result
     let result = await this.server.getTransaction(response.hash);
     let attempts = 0;
-    while (result.status === 'NOT_FOUND' && attempts < 20) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    while (result.status === "NOT_FOUND" && attempts < 20) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       result = await this.server.getTransaction(response.hash);
       attempts++;
     }
 
-    if (result.status === 'SUCCESS') {
+    if (result.status === "SUCCESS") {
       return result;
     } else {
       throw new Error(`Transaction failed: ${result.status}`);
@@ -159,18 +162,18 @@ export class StellarLendingSDK {
   async lpDeposit(
     depositor: string,
     amount: bigint,
-    signFn: SignFunction
+    signFn: SignFunction,
   ): Promise<StellarSdk.SorobanRpc.Api.GetTransactionResponse> {
     const args = [
-      this.toScVal(depositor, 'address'),
-      this.toScVal(amount, 'i128'),
+      this.toScVal(depositor, "address"),
+      this.toScVal(amount, "i128"),
     ];
 
     const tx = await this.buildTransaction(
       depositor,
       this.contracts.lendingPool,
-      'lp_deposit',
-      args
+      "lp_deposit",
+      args,
     );
 
     return this.submitTransaction(tx, signFn);
@@ -182,18 +185,18 @@ export class StellarLendingSDK {
   async lpWithdraw(
     depositor: string,
     amount: bigint,
-    signFn: SignFunction
+    signFn: SignFunction,
   ): Promise<StellarSdk.SorobanRpc.Api.GetTransactionResponse> {
     const args = [
-      this.toScVal(depositor, 'address'),
-      this.toScVal(amount, 'i128'),
+      this.toScVal(depositor, "address"),
+      this.toScVal(amount, "i128"),
     ];
 
     const tx = await this.buildTransaction(
       depositor,
       this.contracts.lendingPool,
-      'lp_withdraw',
-      args
+      "lp_withdraw",
+      args,
     );
 
     return this.submitTransaction(tx, signFn);
@@ -203,13 +206,13 @@ export class StellarLendingSDK {
    * Get LP deposit information
    */
   async getLPDeposit(depositor: string): Promise<LPDepositInfo | null> {
-    const args = [this.toScVal(depositor, 'address')];
+    const args = [this.toScVal(depositor, "address")];
 
     const tx = await this.buildTransaction(
       depositor,
       this.contracts.lendingPool,
-      'get_lp_deposit',
-      args
+      "get_lp_deposit",
+      args,
     );
 
     const simulated = await this.server.simulateTransaction(tx);
@@ -230,20 +233,20 @@ export class StellarLendingSDK {
     collateralAmount: bigint,
     loanAmount: bigint,
     durationMonths: number,
-    signFn: SignFunction
+    signFn: SignFunction,
   ): Promise<StellarSdk.SorobanRpc.Api.GetTransactionResponse> {
     const args = [
-      this.toScVal(borrower, 'address'),
-      this.toScVal(collateralAmount, 'i128'),
-      this.toScVal(loanAmount, 'i128'),
-      this.toScVal(durationMonths, 'u32'),
+      this.toScVal(borrower, "address"),
+      this.toScVal(collateralAmount, "i128"),
+      this.toScVal(loanAmount, "i128"),
+      this.toScVal(durationMonths, "u32"),
     ];
 
     const tx = await this.buildTransaction(
       borrower,
       this.contracts.lendingPool,
-      'originate_loan',
-      args
+      "originate_loan",
+      args,
     );
 
     return this.submitTransaction(tx, signFn);
@@ -255,18 +258,18 @@ export class StellarLendingSDK {
   async repayLoan(
     borrower: string,
     amount: bigint,
-    signFn: SignFunction
+    signFn: SignFunction,
   ): Promise<StellarSdk.SorobanRpc.Api.GetTransactionResponse> {
     const args = [
-      this.toScVal(borrower, 'address'),
-      this.toScVal(amount, 'i128'),
+      this.toScVal(borrower, "address"),
+      this.toScVal(amount, "i128"),
     ];
 
     const tx = await this.buildTransaction(
       borrower,
       this.contracts.lendingPool,
-      'repay_loan',
-      args
+      "repay_loan",
+      args,
     );
 
     return this.submitTransaction(tx, signFn);
@@ -277,15 +280,15 @@ export class StellarLendingSDK {
    */
   async closeLoanEarly(
     borrower: string,
-    signFn: SignFunction
+    signFn: SignFunction,
   ): Promise<StellarSdk.SorobanRpc.Api.GetTransactionResponse> {
-    const args = [this.toScVal(borrower, 'address')];
+    const args = [this.toScVal(borrower, "address")];
 
     const tx = await this.buildTransaction(
       borrower,
       this.contracts.lendingPool,
-      'close_loan_early',
-      args
+      "close_loan_early",
+      args,
     );
 
     return this.submitTransaction(tx, signFn);
@@ -295,13 +298,13 @@ export class StellarLendingSDK {
    * Get loan information
    */
   async getLoan(borrower: string): Promise<LoanInfo | null> {
-    const args = [this.toScVal(borrower, 'address')];
+    const args = [this.toScVal(borrower, "address")];
 
     const tx = await this.buildTransaction(
       borrower,
       this.contracts.lendingPool,
-      'get_loan',
-      args
+      "get_loan",
+      args,
     );
 
     const simulated = await this.server.simulateTransaction(tx);
@@ -321,8 +324,8 @@ export class StellarLendingSDK {
     const tx = await this.buildTransaction(
       this.contracts.lendingPool, // Any address for read-only
       this.contracts.lendingPool,
-      'get_total_liquidity',
-      []
+      "get_total_liquidity",
+      [],
     );
 
     const simulated = await this.server.simulateTransaction(tx);
@@ -341,8 +344,8 @@ export class StellarLendingSDK {
     const tx = await this.buildTransaction(
       this.contracts.lendingPool,
       this.contracts.lendingPool,
-      'get_available_liquidity',
-      []
+      "get_available_liquidity",
+      [],
     );
 
     const simulated = await this.server.simulateTransaction(tx);
@@ -364,18 +367,15 @@ export class StellarLendingSDK {
   async stake(
     user: string,
     amount: bigint,
-    signFn: SignFunction
+    signFn: SignFunction,
   ): Promise<StellarSdk.SorobanRpc.Api.GetTransactionResponse> {
-    const args = [
-      this.toScVal(user, 'address'),
-      this.toScVal(amount, 'i128'),
-    ];
+    const args = [this.toScVal(user, "address"), this.toScVal(amount, "i128")];
 
     const tx = await this.buildTransaction(
       user,
       this.contracts.vault,
-      'stake',
-      args
+      "stake",
+      args,
     );
 
     return this.submitTransaction(tx, signFn);
@@ -387,18 +387,15 @@ export class StellarLendingSDK {
   async unstake(
     user: string,
     amount: bigint,
-    signFn: SignFunction
+    signFn: SignFunction,
   ): Promise<StellarSdk.SorobanRpc.Api.GetTransactionResponse> {
-    const args = [
-      this.toScVal(user, 'address'),
-      this.toScVal(amount, 'i128'),
-    ];
+    const args = [this.toScVal(user, "address"), this.toScVal(amount, "i128")];
 
     const tx = await this.buildTransaction(
       user,
       this.contracts.vault,
-      'unstake',
-      args
+      "unstake",
+      args,
     );
 
     return this.submitTransaction(tx, signFn);
@@ -409,15 +406,15 @@ export class StellarLendingSDK {
    */
   async claimYield(
     user: string,
-    signFn: SignFunction
+    signFn: SignFunction,
   ): Promise<StellarSdk.SorobanRpc.Api.GetTransactionResponse> {
-    const args = [this.toScVal(user, 'address')];
+    const args = [this.toScVal(user, "address")];
 
     const tx = await this.buildTransaction(
       user,
       this.contracts.vault,
-      'claim_yield',
-      args
+      "claim_yield",
+      args,
     );
 
     return this.submitTransaction(tx, signFn);
@@ -436,21 +433,16 @@ export class StellarLendingSDK {
     spender: string,
     amount: bigint,
     expirationLedger: number,
-    signFn: SignFunction
+    signFn: SignFunction,
   ): Promise<StellarSdk.SorobanRpc.Api.GetTransactionResponse> {
     const args = [
-      this.toScVal(from, 'address'),
-      this.toScVal(spender, 'address'),
-      this.toScVal(amount, 'i128'),
-      this.toScVal(expirationLedger, 'u32'),
+      this.toScVal(from, "address"),
+      this.toScVal(spender, "address"),
+      this.toScVal(amount, "i128"),
+      this.toScVal(expirationLedger, "u32"),
     ];
 
-    const tx = await this.buildTransaction(
-      from,
-      tokenAddress,
-      'approve',
-      args
-    );
+    const tx = await this.buildTransaction(from, tokenAddress, "approve", args);
 
     return this.submitTransaction(tx, signFn);
   }
@@ -458,14 +450,17 @@ export class StellarLendingSDK {
   /**
    * Get token balance
    */
-  async getTokenBalance(tokenAddress: string, address: string): Promise<bigint> {
-    const args = [this.toScVal(address, 'address')];
+  async getTokenBalance(
+    tokenAddress: string,
+    address: string,
+  ): Promise<bigint> {
+    const args = [this.toScVal(address, "address")];
 
     const tx = await this.buildTransaction(
       address,
       tokenAddress,
-      'balance',
-      args
+      "balance",
+      args,
     );
 
     const simulated = await this.server.simulateTransaction(tx);

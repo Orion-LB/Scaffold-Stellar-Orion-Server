@@ -1,5 +1,5 @@
 use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short, Address, Env, IntoVal, Symbol,
+    contract, contractimpl, contracttype, symbol_short, Address, Env, IntoVal, Symbol, Vec,
 };
 use stellar_access::access_control::{self as access_control, AccessControl};
 use stellar_macros::{default_impl, only_role};
@@ -10,9 +10,31 @@ use stellar_macros::{default_impl, only_role};
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Action {
+    Add,
+    Remove,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CollateralChange {
+    pub action: Action,
+    pub token_address: Address,
+    pub amount: i128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CollateralInput {
+    pub token_address: Address,
+    pub amount: i128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Loan {
     pub borrower: Address,
-    pub collateral_amount: i128,
+    pub collaterals: Vec<CollateralInput>,
     pub principal: i128,
     pub outstanding_debt: i128,
     pub interest_rate: i128,        // Basis points (e.g., 700 = 7%, 1400 = 14%)
@@ -35,15 +57,6 @@ pub struct LPDeposit {
     pub total_interest_earned: i128,
 }
 
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct TokenRiskProfile {
-    pub rwa_token_address: Address,
-    pub token_yield_apr: i128,     // Basis points (e.g., 500 = 5%)
-    pub token_expiry: u64,
-    pub last_updated: u64,
-}
-
 // ============================================================================
 // Storage Keys
 // ============================================================================
@@ -52,15 +65,12 @@ pub struct TokenRiskProfile {
 #[derive(Clone)]
 pub enum DataKey {
     Admin,
-    VaultAddress,
     OracleAddress,
     UsdcAddress,
-    StRwaAddress,
-    RwaAddress,
     LiquidationBot,
     Loan(Address),              // borrower -> Loan
     LPDeposit(Address),         // depositor -> LPDeposit
-    TokenRiskProfile(Address),  // rwa_token -> TokenRiskProfile
+    Vaults(Address),            // stRWA token -> vault address
     TotalLiquidity,             // Total USDC in pool
     TotalLockedLiquidity,       // Total USDC locked in loans
 }
@@ -111,6 +121,14 @@ impl<'a> StRwaClient<'a> {
             self.address,
             &Symbol::new(self.env, "transfer"),
             (from, to, amount).into_val(self.env),
+        )
+    }
+
+    pub fn transfer_from(&self, spender: &Address, from: &Address, to: &Address, amount: &i128) {
+        self.env.invoke_contract(
+            self.address,
+            &Symbol::new(self.env, "transfer_from"),
+            (spender, from, to, amount).into_val(self.env),
         )
     }
 
@@ -198,11 +216,8 @@ impl LendingPool {
     pub fn initialize(
         e: Env,
         admin: Address,
-        vault_address: Address,
         oracle_address: Address,
         usdc_address: Address,
-        strwa_address: Address,
-        rwa_address: Address,
     ) {
         // Set up access control
         access_control::set_admin(&e, &admin);
@@ -214,19 +229,10 @@ impl LendingPool {
         e.storage().instance().set(&DataKey::Admin, &admin);
         e.storage()
             .instance()
-            .set(&DataKey::VaultAddress, &vault_address);
-        e.storage()
-            .instance()
             .set(&DataKey::OracleAddress, &oracle_address);
         e.storage()
             .instance()
             .set(&DataKey::UsdcAddress, &usdc_address);
-        e.storage()
-            .instance()
-            .set(&DataKey::StRwaAddress, &strwa_address);
-        e.storage()
-            .instance()
-            .set(&DataKey::RwaAddress, &rwa_address);
 
         // Initialize liquidity counters
         e.storage().instance().set(&DataKey::TotalLiquidity, &0i128);
@@ -243,25 +249,10 @@ impl LendingPool {
             .set(&DataKey::LiquidationBot, &bot_address);
     }
 
-    /// Update token risk profile (only admin)
+    /// Register a vault for a specific stRWA token (only admin)
     #[only_role(caller, "admin")]
-    pub fn update_token_risk_profile(
-        e: Env,
-        caller: Address,
-        rwa_token_address: Address,
-        token_yield_apr: i128,
-        token_expiry: u64,
-    ) {
-        let profile = TokenRiskProfile {
-            rwa_token_address: rwa_token_address.clone(),
-            token_yield_apr,
-            token_expiry,
-            last_updated: e.ledger().timestamp(),
-        };
-
-        e.storage()
-            .instance()
-            .set(&DataKey::TokenRiskProfile(rwa_token_address), &profile);
+    pub fn register_vault(e: Env, caller: Address, strwa_token: Address, vault: Address) {
+        e.storage().instance().set(&DataKey::Vaults(strwa_token), &vault);
     }
 
     // ========================================================================
@@ -385,7 +376,7 @@ impl LendingPool {
     pub fn originate_loan(
         e: Env,
         borrower: Address,
-        collateral_amount: i128,
+        collaterals: Vec<CollateralInput>,
         loan_amount: i128,
         duration_months: u32,
     ) {
@@ -405,51 +396,35 @@ impl LendingPool {
             panic!("Loan duration must be between 3 and 24 months");
         }
 
-        // Get token risk profile for RWA
-        let rwa_address: Address = e.storage().instance().get(&DataKey::RwaAddress).unwrap();
-        let risk_profile: TokenRiskProfile = e
-            .storage()
-            .instance()
-            .get(&DataKey::TokenRiskProfile(rwa_address.clone()))
-            .expect("Token risk profile not set");
+        // Use a fixed interest rate and yield share for now
+        let interest_rate = 700; // 7%
+        let yield_share_percent = 1000; // 10%
 
-        // Auto-calculate interest rate based on token yield
-        // High risk (yield < 5%): 14% APR
-        // Low risk (yield >= 5%): 7% APR
-        let interest_rate = if risk_profile.token_yield_apr < 500 {
-            1400 // 14%
-        } else {
-            700 // 7%
-        };
-
-        // Auto-calculate yield share percent
-        // High risk: 20% to LPs
-        // Low risk: 10% to LPs
-        let yield_share_percent = if risk_profile.token_yield_apr < 500 {
-            2000 // 20%
-        } else {
-            1000 // 10%
-        };
-
-        // Get oracle price for stRWA collateral
         let oracle_address: Address = e.storage().instance().get(&DataKey::OracleAddress).unwrap();
         let oracle_client = OracleClient::new(&e, &oracle_address);
-        let strwa_address: Address = e.storage().instance().get(&DataKey::StRwaAddress).unwrap();
-        let (strwa_price, price_timestamp) = oracle_client.get_price(&strwa_address);
-
-        // Check oracle price staleness (must be < 24 hours old)
         let current_time = e.ledger().timestamp();
-        if current_time - price_timestamp > 86400 {
-            // 24 hours in seconds
-            panic!("Oracle price is stale");
+        let mut total_collateral_value = 0;
+
+        if collaterals.is_empty() {
+            panic!("At least one collateral is required");
         }
 
-        // Calculate collateral value in USDC
-        let collateral_value = (collateral_amount * strwa_price) / 1_000_000; // Assuming 6 decimals
+        for collateral in collaterals.iter() {
+            let (price, price_timestamp) = oracle_client.get_price(&collateral.token_address);
+
+            // Check oracle price staleness (must be < 24 hours old)
+            if current_time - price_timestamp > 86400 {
+                panic!("Oracle price is stale");
+            }
+
+            // Calculate collateral value in USDC
+            // Assumes stRWA tokens have 18 decimals and oracle price has 7 decimals, resulting in USDC value with 7 decimals
+            let collateral_value = (collateral.amount * price) / 10_i128.pow(18);
+            total_collateral_value += collateral_value;
+        }
 
         // Check 140% collateral ratio (LTV)
-        // collateral_value >= loan_amount * 1.4
-        if collateral_value * 100 < loan_amount * 140 {
+        if total_collateral_value * 100 < loan_amount * 140 {
             panic!("Insufficient collateral (140% ratio required)");
         }
 
@@ -470,9 +445,11 @@ impl LendingPool {
             panic!("Insufficient pool liquidity");
         }
 
-        // Transfer stRWA collateral from borrower to contract
-        let strwa_client = StRwaClient::new(&e, &strwa_address);
-        strwa_client.transfer(&borrower, &e.current_contract_address(), &collateral_amount);
+        // Transfer stRWA collaterals from borrower to contract
+        for collateral in collaterals.iter() {
+            let strwa_client = StRwaClient::new(&e, &collateral.token_address);
+            strwa_client.transfer(&borrower, &e.current_contract_address(), &collateral.amount);
+        }
 
         // Calculate loan end time
         let start_time = e.ledger().timestamp();
@@ -482,7 +459,7 @@ impl LendingPool {
         // Create loan record
         let loan = Loan {
             borrower: borrower.clone(),
-            collateral_amount,
+            collaterals: collaterals.clone(),
             principal: loan_amount,
             outstanding_debt: loan_amount,
             interest_rate,
@@ -510,11 +487,13 @@ impl LendingPool {
         let usdc_client = UsdcClient::new(&e, &usdc_address);
         usdc_client.transfer(&e.current_contract_address(), &borrower, &loan_amount);
 
-        // Mark user as borrower in vault with loan details
-        let vault_address: Address = e.storage().instance().get(&DataKey::VaultAddress).unwrap();
-        let vault_client = VaultClient::new(&e, &vault_address);
+        // Mark user as borrower in each vault
         let loan_period = end_time - start_time;
-        vault_client.mark_as_borrower(&borrower, &loan_amount, &loan_period);
+        for collateral in collaterals.iter() {
+            let vault_address: Address = e.storage().instance().get(&DataKey::Vaults(collateral.token_address.clone())).expect("Vault not registered for this token");
+            let vault_client = VaultClient::new(&e, &vault_address);
+            vault_client.mark_as_borrower(&borrower, &loan_amount, &loan_period);
+        }
 
         e.events()
             .publish((symbol_short!("loan_orig"),), (borrower, loan_amount));
@@ -605,11 +584,20 @@ impl LendingPool {
             .get(&DataKey::Loan(borrower.clone()))
             .expect("Loan not found");
 
-        // Try to pull yield from vault first
-        let vault_address: Address = e.storage().instance().get(&DataKey::VaultAddress).unwrap();
-        let vault_client = VaultClient::new(&e, &vault_address);
+        // Try to pull yield from vaults first
+        let mut yield_pulled = 0;
+        let mut amount_to_pull = amount;
+        for collateral in loan.collaterals.iter() {
+            if amount_to_pull <= 0 {
+                break;
+            }
+            let vault_address: Address = e.storage().instance().get(&DataKey::Vaults(collateral.token_address.clone())).unwrap();
+            let vault_client = VaultClient::new(&e, &vault_address);
+            let pulled = vault_client.pull_yield_for_repay(&borrower, &amount_to_pull);
+            yield_pulled += pulled;
+            amount_to_pull -= pulled;
+        }
 
-        let yield_pulled = vault_client.pull_yield_for_repay(&borrower, &amount);
         let remaining_payment = amount - yield_pulled;
 
         // If yield covers the full payment, process it
@@ -669,14 +657,15 @@ impl LendingPool {
             .get(&DataKey::Loan(borrower.clone()))
             .expect("Loan not found");
 
-        // Return collateral to borrower
-        let strwa_address: Address = e.storage().instance().get(&DataKey::StRwaAddress).unwrap();
-        let strwa_client = StRwaClient::new(&e, &strwa_address);
-        strwa_client.transfer(
-            &e.current_contract_address(),
-            &borrower,
-            &loan.collateral_amount,
-        );
+        // Return all collaterals to borrower
+        for collateral in loan.collaterals.iter() {
+            let strwa_client = StRwaClient::new(&e, &collateral.token_address);
+            strwa_client.transfer(
+                &e.current_contract_address(),
+                &borrower,
+                &collateral.amount,
+            );
+        }
 
         // Update locked liquidity
         let mut total_locked: i128 = e
@@ -689,11 +678,13 @@ impl LendingPool {
             .instance()
             .set(&DataKey::TotalLockedLiquidity, &total_locked);
 
-        // Mark user as no longer a borrower in vault
-        let vault_address: Address = e.storage().instance().get(&DataKey::VaultAddress).unwrap();
-        let vault_client = VaultClient::new(&e, &vault_address);
-        vault_client.mark_as_borrower(&borrower, &0, &0);
-        vault_client.set_lp_liquidity_used(&borrower, &0);
+        // Mark user as no longer a borrower in all associated vaults
+        for collateral in loan.collaterals.iter() {
+            let vault_address: Address = e.storage().instance().get(&DataKey::Vaults(collateral.token_address.clone())).unwrap();
+            let vault_client = VaultClient::new(&e, &vault_address);
+            vault_client.mark_as_borrower(&borrower, &0, &0);
+            vault_client.set_lp_liquidity_used(&borrower, &0);
+        }
 
         // Remove loan record
         e.storage().instance().remove(&DataKey::Loan(borrower.clone()));
@@ -767,17 +758,18 @@ impl LendingPool {
 
         let current_time = e.ledger().timestamp();
 
-        // Get current collateral value
+        // Get current total collateral value
         let oracle_address: Address = e.storage().instance().get(&DataKey::OracleAddress).unwrap();
         let oracle_client = OracleClient::new(&e, &oracle_address);
-        let strwa_address: Address = e.storage().instance().get(&DataKey::StRwaAddress).unwrap();
-        let (strwa_price, price_timestamp) = oracle_client.get_price(&strwa_address);
-
-        if current_time - price_timestamp > 86400 {
-            panic!("Oracle price is stale");
+        let mut collateral_value = 0;
+        for collateral in loan.collaterals.iter() {
+            let (price, price_timestamp) = oracle_client.get_price(&collateral.token_address);
+            if current_time - price_timestamp > 86400 {
+                panic!("Oracle price is stale");
+            }
+            collateral_value += (collateral.amount * price) / 10_i128.pow(18);
         }
 
-        let collateral_value = (loan.collateral_amount * strwa_price) / 1_000_000;
         let total_debt = loan.outstanding_debt + loan.penalties;
 
         // Check if warning should be issued
@@ -844,18 +836,19 @@ impl LendingPool {
             .get(&DataKey::Loan(borrower.clone()))
             .expect("Loan not found");
 
-        // Get current collateral value
+        // Get current total collateral value
         let oracle_address: Address = e.storage().instance().get(&DataKey::OracleAddress).unwrap();
         let oracle_client = OracleClient::new(&e, &oracle_address);
-        let strwa_address: Address = e.storage().instance().get(&DataKey::StRwaAddress).unwrap();
-        let (strwa_price, price_timestamp) = oracle_client.get_price(&strwa_address);
-
+        let mut collateral_value = 0;
         let current_time = e.ledger().timestamp();
-        if current_time - price_timestamp > 86400 {
-            panic!("Oracle price is stale");
+        for collateral in loan.collaterals.iter() {
+            let (price, price_timestamp) = oracle_client.get_price(&collateral.token_address);
+            if current_time - price_timestamp > 86400 {
+                panic!("Oracle price is stale");
+            }
+            collateral_value += (collateral.amount * price) / 10_i128.pow(18);
         }
-
-        let collateral_value = (loan.collateral_amount * strwa_price) / 1_000_000;
+        
         let total_debt = loan.outstanding_debt + loan.penalties;
 
         // Check liquidation threshold: debt >= collateral_value × 110%
@@ -867,9 +860,11 @@ impl LendingPool {
         let bot_reward = (collateral_value * 10) / 100;
         let remaining_collateral = collateral_value - bot_reward;
 
-        // Burn stRWA collateral (convert to USDC via liquidation)
-        let strwa_client = StRwaClient::new(&e, &strwa_address);
-        strwa_client.burn(&e.current_contract_address(), &loan.collateral_amount);
+        // Burn all stRWA collaterals
+        for collateral in loan.collaterals.iter() {
+            let strwa_client = StRwaClient::new(&e, &collateral.token_address);
+            strwa_client.burn(&e.current_contract_address(), &collateral.amount);
+        }
 
         // Transfer bot reward in USDC
         let usdc_address: Address = e.storage().instance().get(&DataKey::UsdcAddress).unwrap();
@@ -894,17 +889,109 @@ impl LendingPool {
             .instance()
             .set(&DataKey::TotalLockedLiquidity, &total_locked);
 
-        // Mark user as no longer a borrower
-        let vault_address: Address = e.storage().instance().get(&DataKey::VaultAddress).unwrap();
-        let vault_client = VaultClient::new(&e, &vault_address);
-        vault_client.mark_as_borrower(&borrower, &0, &0);
-        vault_client.set_lp_liquidity_used(&borrower, &0);
+        // Mark user as no longer a borrower in all associated vaults
+        for collateral in loan.collaterals.iter() {
+            let vault_address: Address = e.storage().instance().get(&DataKey::Vaults(collateral.token_address.clone())).unwrap();
+            let vault_client = VaultClient::new(&e, &vault_address);
+            vault_client.mark_as_borrower(&borrower, &0, &0);
+            vault_client.set_lp_liquidity_used(&borrower, &0);
+        }
 
         // Remove loan record
         e.storage().instance().remove(&DataKey::Loan(borrower.clone()));
 
         e.events()
             .publish((symbol_short!("liquidat"),), (borrower, total_debt));
+    }
+
+    // ========================================================================
+    // Collateral Adjustment
+    // ========================================================================
+
+    fn add_to_collateral(collaterals: &mut Vec<CollateralInput>, change: &CollateralChange) {
+        if let Some(collateral) = collaterals.iter_mut().find(|c| c.token_address == change.token_address) {
+            collateral.amount += change.amount;
+        } else {
+            collaterals.push_back(CollateralInput {
+                token_address: change.token_address.clone(),
+                amount: change.amount,
+            });
+        }
+    }
+
+    fn remove_from_collateral(collaterals: &mut Vec<CollateralInput>, change: &CollateralChange) {
+        let index = collaterals.iter().position(|c| c.token_address == change.token_address);
+        if let Some(i) = index {
+            let mut collateral = collaterals.get(i).unwrap();
+            if collateral.amount < change.amount {
+                panic!("Insufficient collateral to remove");
+            }
+            collateral.amount -= change.amount;
+            if collateral.amount == 0 {
+                collaterals.remove(i);
+            } else {
+                 collaterals.set(i, collateral);
+            }
+        } else {
+            panic!("Collateral not found");
+        }
+    }
+
+    fn calculate_health_factor(e: &Env, loan: &Loan) -> u128 {
+        let oracle_address: Address = e.storage().instance().get(&DataKey::OracleAddress).unwrap();
+        let oracle_client = OracleClient::new(e, &oracle_address);
+        let mut total_collateral_value = 0;
+        let current_time = e.ledger().timestamp();
+
+        for collateral in loan.collaterals.iter() {
+            let (price, price_timestamp) = oracle_client.get_price(&collateral.token_address);
+            if current_time - price_timestamp > 86400 {
+                panic!("Oracle price is stale");
+            }
+            total_collateral_value += (collateral.amount * price) / 10_i128.pow(18);
+        }
+
+        if loan.outstanding_debt == 0 {
+            return u128::MAX;
+        }
+
+        (total_collateral_value as u128 * 100) / loan.outstanding_debt as u128
+    }
+
+    pub fn adjust_collateral(
+        e: Env,
+        borrower: Address,
+        collateral_changes: Vec<CollateralChange>,
+    ) {
+        borrower.require_auth();
+
+        let mut loan: Loan = e
+            .storage()
+            .instance()
+            .get(&DataKey::Loan(borrower.clone()))
+            .expect("Loan not found");
+
+        for change in collateral_changes.iter() {
+            match change.action {
+                Action::Add => {
+                    let token = StRwaClient::new(&e, &change.token_address);
+                    token.transfer_from(&e.current_contract_address(), &borrower, &e.current_contract_address(), &change.amount);
+                    Self::add_to_collateral(&mut loan.collaterals, &change);
+                },
+                Action::Remove => {
+                    Self::remove_from_collateral(&mut loan.collaterals, &change);
+                    let token = StRwaClient::new(&e, &change.token_address);
+                    token.transfer(&e.current_contract_address(), &borrower, &change.amount);
+                }
+            }
+        }
+
+        let new_health_factor = Self::calculate_health_factor(&e, &loan);
+        if new_health_factor < 140 {
+            panic!("Insufficient collateral after adjustment");
+        }
+
+        e.storage().instance().set(&DataKey::Loan(borrower.clone()), &loan);
     }
 
     // ========================================================================

@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+**/dist/
+build/
+**/build/
+.next/
+out/
+
+# Generated files
+packages/
+**/packages/
+
+# Bots
+bots/
+**/bots/
+
+# Contract bindings
+contracts/
+**/contracts/
+
+# Logs
+logs/
+*.log
+
+# Environment files
+.env
+.env.*
+
+# Git
+.git/
+
+# IDE
+.vscode/
+.idea/
+
+# Temp files
+*.tmp
+*.temp
+
+# WASM files
+*.wasm
+
+# Test coverage
+coverage/
+.nyc_output/

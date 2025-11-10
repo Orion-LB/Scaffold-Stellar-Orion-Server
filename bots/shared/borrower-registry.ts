@@ -1,6 +1,6 @@
 // bots/shared/borrower-registry.ts
-import { readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, writeFileSync } from "fs";
+import { join } from "path";
 
 export interface BorrowerRegistryData {
   borrowers: string[];
@@ -13,7 +13,7 @@ export interface BorrowerRegistryData {
  * Maintains a list of all active borrowers in the system
  */
 export class BorrowerRegistry {
-  private static REGISTRY_PATH = join(__dirname, './borrowers.json');
+  private static REGISTRY_PATH = join(__dirname, "./borrowers.json");
   private data: BorrowerRegistryData;
 
   constructor() {
@@ -25,14 +25,14 @@ export class BorrowerRegistry {
    */
   load(): void {
     try {
-      const content = readFileSync(BorrowerRegistry.REGISTRY_PATH, 'utf-8');
+      const content = readFileSync(BorrowerRegistry.REGISTRY_PATH, "utf-8");
       this.data = JSON.parse(content);
     } catch (error) {
-      console.warn('Failed to load borrower registry, initializing empty');
+      console.warn("Failed to load borrower registry, initializing empty");
       this.data = {
         borrowers: [],
         last_updated: new Date().toISOString(),
-        version: '1.0.0',
+        version: "1.0.0",
       };
       this.save();
     }
@@ -46,10 +46,10 @@ export class BorrowerRegistry {
     try {
       writeFileSync(
         BorrowerRegistry.REGISTRY_PATH,
-        JSON.stringify(this.data, null, 2)
+        JSON.stringify(this.data, null, 2),
       );
     } catch (error) {
-      console.error('Failed to save borrower registry:', error);
+      console.error("Failed to save borrower registry:", error);
     }
   }
 
@@ -103,7 +103,7 @@ export class BorrowerRegistry {
   clear(): void {
     this.data.borrowers = [];
     this.save();
-    console.log('Cleared all borrowers from registry');
+    console.log("Cleared all borrowers from registry");
   }
 
   /**

@@ -38,6 +38,14 @@ impl MockRwaToken {
         // Mint initial supply to admin
         Base::mint(e, &admin, initial_supply);
     }
+
+    pub fn mint_rwa_tokens(e: &Env, user: Address, amount: i128) {
+        // Automatically whitelist the user so they can hold the token
+        AllowList::allow_user(e, &user);
+
+        // Mint the requested amount of RWA tokens to the user
+        Base::mint(e, &user, amount);
+    }
 }
 
 // Use OpenZeppelin's AllowList implementation for transfer restrictions
