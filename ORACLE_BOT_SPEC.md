@@ -54,6 +54,7 @@ The Oracle Price Bot is a critical infrastructure component that maintains real-
 **Feature**: Fetch prices from multiple data providers for redundancy and accuracy.
 
 **Capabilities**:
+
 - Support 5+ data sources per asset
 - Parallel fetching for performance
 - Source priority/weighting system
@@ -61,42 +62,43 @@ The Oracle Price Bot is a critical infrastructure component that maintains real-
 - Source health monitoring
 
 **Data Sources**:
+
 ```typescript
 interface DataSource {
   name: string;
-  type: 'chainlink' | 'api' | 'oracle' | 'custom';
+  type: "chainlink" | "api" | "oracle" | "custom";
   url: string;
   apiKey?: string;
-  weight: number;        // 0-100, used in weighted average
-  priority: number;      // Lower = higher priority for failover
-  timeout: number;       // ms
+  weight: number; // 0-100, used in weighted average
+  priority: number; // Lower = higher priority for failover
+  timeout: number; // ms
   retries: number;
 }
 
 const DATA_SOURCES: Record<string, DataSource[]> = {
-  'TBILL_TOKEN': [
+  TBILL_TOKEN: [
     {
-      name: 'Franklin Templeton API',
-      type: 'api',
-      url: 'https://api.franklintempleton.com/tbill/price',
+      name: "Franklin Templeton API",
+      type: "api",
+      url: "https://api.franklintempleton.com/tbill/price",
       weight: 40,
       priority: 1,
       timeout: 5000,
       retries: 3,
     },
     {
-      name: 'Chainlink RWA Feed',
-      type: 'chainlink',
-      url: 'https://rwa-oracle.chain.link/tbill',
+      name: "Chainlink RWA Feed",
+      type: "chainlink",
+      url: "https://rwa-oracle.chain.link/tbill",
       weight: 30,
       priority: 2,
       timeout: 5000,
       retries: 3,
     },
     {
-      name: 'Ondo Finance',
-      type: 'api',
-      url: 'https://api.ondo.finance/ousg/nav',
+      name: "Ondo Finance",
+      type: "api",
+      url: "https://api.ondo.finance/ousg/nav",
       weight: 30,
       priority: 3,
       timeout: 5000,
@@ -111,40 +113,43 @@ const DATA_SOURCES: Record<string, DataSource[]> = {
 **Feature**: Aggregate prices from multiple sources with outlier detection.
 
 **Algorithms**:
+
 - Weighted average (default)
 - Median (outlier resistant)
 - Trimmed mean (remove top/bottom 20%)
 
 **Validation Rules**:
+
 ```typescript
 interface ValidationConfig {
-  maxDeviationPercent: number;     // Max deviation from median (e.g., 5%)
-  minSources: number;               // Minimum sources required (e.g., 2)
-  maxStaleness: number;             // Max age of price data (seconds)
-  minPrice: number;                 // Sanity check: minimum valid price
-  maxPrice: number;                 // Sanity check: maximum valid price
-  maxChangePercent: number;         // Max % change from last price (e.g., 10%)
+  maxDeviationPercent: number; // Max deviation from median (e.g., 5%)
+  minSources: number; // Minimum sources required (e.g., 2)
+  maxStaleness: number; // Max age of price data (seconds)
+  minPrice: number; // Sanity check: minimum valid price
+  maxPrice: number; // Sanity check: maximum valid price
+  maxChangePercent: number; // Max % change from last price (e.g., 10%)
 }
 
 const VALIDATION_CONFIG: Record<string, ValidationConfig> = {
-  'TBILL_TOKEN': {
+  TBILL_TOKEN: {
     maxDeviationPercent: 3.0,
     minSources: 2,
-    maxStaleness: 3600,          // 1 hour
-    minPrice: 0.95,              // $0.95 (T-Bills shouldn't drop below par)
-    maxPrice: 1.10,              // $1.10
-    maxChangePercent: 2.0,       // 2% max change per update
+    maxStaleness: 3600, // 1 hour
+    minPrice: 0.95, // $0.95 (T-Bills shouldn't drop below par)
+    maxPrice: 1.1, // $1.10
+    maxChangePercent: 2.0, // 2% max change per update
   },
 };
 ```
 
 **Outlier Detection**:
+
 ```typescript
 function detectOutliers(prices: number[]): number[] {
   const median = calculateMedian(prices);
   const maxDeviation = VALIDATION_CONFIG[asset].maxDeviationPercent / 100;
 
-  return prices.filter(price => {
+  return prices.filter((price) => {
     const deviation = Math.abs(price - median) / median;
     return deviation <= maxDeviation;
   });
@@ -156,11 +161,12 @@ function detectOutliers(prices: number[]): number[] {
 **Feature**: Apply exponential moving average to reduce volatility and manipulation.
 
 **Implementation**:
+
 ```typescript
 interface SmoothingConfig {
   enabled: boolean;
-  alpha: number;              // Smoothing factor (0-1), higher = less smoothing
-  windowSize: number;         // Number of historical prices to consider
+  alpha: number; // Smoothing factor (0-1), higher = less smoothing
+  windowSize: number; // Number of historical prices to consider
 }
 
 class PriceSmoother {
@@ -198,27 +204,28 @@ class PriceSmoother {
 **Feature**: Build, sign, and submit price updates to the Oracle contract.
 
 **Transaction Building**:
+
 ```typescript
 async function submitPrice(
   asset: Address,
   price: number,
-  timestamp: number
+  timestamp: number,
 ): Promise<string> {
   const priceScaled = BigInt(Math.round(price * 1_000_000)); // 6 decimals
 
   const args = [
-    StellarSdk.nativeToScVal(asset, 'address'),
-    StellarSdk.nativeToScVal(priceScaled, 'i128'),
-    StellarSdk.nativeToScVal(timestamp, 'u64'),
-    StellarSdk.nativeToScVal(botAddress, 'address'),
+    StellarSdk.nativeToScVal(asset, "address"),
+    StellarSdk.nativeToScVal(priceScaled, "i128"),
+    StellarSdk.nativeToScVal(timestamp, "u64"),
+    StellarSdk.nativeToScVal(botAddress, "address"),
   ];
 
   const tx = await buildTransaction(
     server,
     botAddress,
     oracleContractId,
-    'set_price',
-    args
+    "set_price",
+    args,
   );
 
   const signedTx = await signTransaction(tx);
@@ -229,6 +236,7 @@ async function submitPrice(
 ```
 
 **Gas Optimization**:
+
 - Batch multiple asset updates in single transaction when possible
 - Implement adaptive gas pricing based on network congestion
 - Skip updates if price change < threshold (e.g., 0.1%)
@@ -238,12 +246,13 @@ async function submitPrice(
 **Feature**: Flexible scheduling system with multiple trigger types.
 
 **Triggers**:
+
 ```typescript
 interface UpdateSchedule {
   timeBased: {
     enabled: boolean;
-    intervalSeconds: number;      // Default: 60s
-    alignToMinute?: boolean;      // Align updates to minute boundaries
+    intervalSeconds: number; // Default: 60s
+    alignToMinute?: boolean; // Align updates to minute boundaries
   };
 
   eventBased: {
@@ -254,8 +263,8 @@ interface UpdateSchedule {
 
   manual: {
     enabled: boolean;
-    webhookUrl?: string;          // Webhook for manual triggers
-    adminAddresses: string[];     // Addresses that can trigger updates
+    webhookUrl?: string; // Webhook for manual triggers
+    adminAddresses: string[]; // Addresses that can trigger updates
   };
 }
 
@@ -268,13 +277,13 @@ const SCHEDULE_CONFIG: UpdateSchedule = {
 
   eventBased: {
     enabled: true,
-    priceChangeThreshold: 0.5,    // 0.5% change triggers update
+    priceChangeThreshold: 0.5, // 0.5% change triggers update
     checkIntervalSeconds: 30,
   },
 
   manual: {
     enabled: true,
-    webhookUrl: 'https://bot.orion.com/oracle/trigger',
+    webhookUrl: "https://bot.orion.com/oracle/trigger",
     adminAddresses: [process.env.ADMIN_ADDRESS!],
   },
 };
@@ -285,18 +294,19 @@ const SCHEDULE_CONFIG: UpdateSchedule = {
 **Feature**: Robust error handling with exponential backoff.
 
 **Retry Strategy**:
+
 ```typescript
 interface RetryConfig {
   maxRetries: number;
-  initialDelay: number;      // ms
-  maxDelay: number;          // ms
+  initialDelay: number; // ms
+  maxDelay: number; // ms
   backoffMultiplier: number;
   retryableErrors: string[]; // Error codes/messages to retry
 }
 
 async function fetchWithRetry<T>(
   fn: () => Promise<T>,
-  config: RetryConfig
+  config: RetryConfig,
 ): Promise<T> {
   let lastError: Error;
 
@@ -307,8 +317,8 @@ async function fetchWithRetry<T>(
       lastError = error;
 
       // Check if error is retryable
-      const isRetryable = config.retryableErrors.some(
-        msg => error.message.includes(msg)
+      const isRetryable = config.retryableErrors.some((msg) =>
+        error.message.includes(msg),
       );
 
       if (!isRetryable || attempt === config.maxRetries) {
@@ -318,7 +328,7 @@ async function fetchWithRetry<T>(
       // Exponential backoff
       const delay = Math.min(
         config.initialDelay * Math.pow(config.backoffMultiplier, attempt),
-        config.maxDelay
+        config.maxDelay,
       );
 
       logger.warn(`Attempt ${attempt + 1} failed, retrying in ${delay}ms`, {
@@ -338,10 +348,10 @@ const RETRY_CONFIG: RetryConfig = {
   maxDelay: 10000,
   backoffMultiplier: 2,
   retryableErrors: [
-    'Network request failed',
-    'timeout',
-    'ECONNRESET',
-    'Transaction simulation failed',
+    "Network request failed",
+    "timeout",
+    "ECONNRESET",
+    "Transaction simulation failed",
   ],
 };
 ```
@@ -351,33 +361,37 @@ const RETRY_CONFIG: RetryConfig = {
 **Feature**: Comprehensive monitoring with alerting for anomalies.
 
 **Metrics**:
+
 ```typescript
 interface BotMetrics {
   // Performance
   successfulUpdates: number;
   failedUpdates: number;
-  averageLatency: number;           // ms from fetch to on-chain confirmation
+  averageLatency: number; // ms from fetch to on-chain confirmation
 
   // Price data
   lastPrice: number;
-  priceChangeLast1h: number;        // %
-  priceChangeLast24h: number;       // %
+  priceChangeLast1h: number; // %
+  priceChangeLast24h: number; // %
 
   // Data sources
-  sourceHealthMap: Map<string, {
-    successRate: number;            // %
-    averageResponseTime: number;    // ms
-    lastFailure: Date | null;
-  }>;
+  sourceHealthMap: Map<
+    string,
+    {
+      successRate: number; // %
+      averageResponseTime: number; // ms
+      lastFailure: Date | null;
+    }
+  >;
 
   // Blockchain
-  transactionSuccessRate: number;   // %
+  transactionSuccessRate: number; // %
   averageGasUsed: number;
   lastUpdateTimestamp: number;
 }
 
 interface Alert {
-  severity: 'info' | 'warning' | 'critical';
+  severity: "info" | "warning" | "critical";
   message: string;
   timestamp: Date;
   metadata?: Record<string, any>;
@@ -392,10 +406,11 @@ class MonitoringService {
     const now = Date.now() / 1000;
     const staleness = now - this.metrics.lastUpdateTimestamp;
 
-    if (staleness > 300) { // 5 minutes
+    if (staleness > 300) {
+      // 5 minutes
       this.alert({
-        severity: 'critical',
-        message: 'Oracle update is stale',
+        severity: "critical",
+        message: "Oracle update is stale",
         timestamp: new Date(),
         metadata: { stalenessSeconds: staleness },
       });
@@ -404,8 +419,8 @@ class MonitoringService {
     // Check price volatility
     if (Math.abs(this.metrics.priceChangeLast1h) > 5) {
       this.alert({
-        severity: 'warning',
-        message: 'High price volatility detected',
+        severity: "warning",
+        message: "High price volatility detected",
         timestamp: new Date(),
         metadata: { changePercent: this.metrics.priceChangeLast1h },
       });
@@ -413,9 +428,10 @@ class MonitoringService {
 
     // Check data source health
     for (const [source, health] of this.metrics.sourceHealthMap) {
-      if (health.successRate < 0.8) { // 80% threshold
+      if (health.successRate < 0.8) {
+        // 80% threshold
         this.alert({
-          severity: 'warning',
+          severity: "warning",
           message: `Data source unhealthy: ${source}`,
           timestamp: new Date(),
           metadata: { source, successRate: health.successRate },
@@ -428,7 +444,7 @@ class MonitoringService {
     this.alerts.push(alert);
 
     // Send to external monitoring (Slack, PagerDuty, etc.)
-    if (alert.severity === 'critical') {
+    if (alert.severity === "critical") {
       this.sendToSlack(alert);
       this.sendToPagerDuty(alert);
     }
@@ -443,40 +459,41 @@ class MonitoringService {
 **Feature**: Admin interface for manual overrides and configuration.
 
 **Admin Functions**:
+
 ```typescript
 class AdminInterface {
   // Manual price update (emergency override)
   async forceUpdatePrice(
     asset: string,
     price: number,
-    adminKey: string
+    adminKey: string,
   ): Promise<void> {
     if (!this.verifyAdminKey(adminKey)) {
-      throw new Error('Unauthorized');
+      throw new Error("Unauthorized");
     }
 
     await submitPrice(asset, price, Date.now() / 1000);
-    logger.info('Admin forced price update', { asset, price });
+    logger.info("Admin forced price update", { asset, price });
   }
 
   // Pause bot (emergency stop)
   async pauseBot(adminKey: string): Promise<void> {
     if (!this.verifyAdminKey(adminKey)) {
-      throw new Error('Unauthorized');
+      throw new Error("Unauthorized");
     }
 
     this.paused = true;
-    logger.warn('Bot paused by admin');
+    logger.warn("Bot paused by admin");
   }
 
   // Resume bot
   async resumeBot(adminKey: string): Promise<void> {
     if (!this.verifyAdminKey(adminKey)) {
-      throw new Error('Unauthorized');
+      throw new Error("Unauthorized");
     }
 
     this.paused = false;
-    logger.info('Bot resumed by admin');
+    logger.info("Bot resumed by admin");
   }
 
   // Update data source configuration
@@ -484,19 +501,19 @@ class AdminInterface {
     asset: string,
     sourceName: string,
     config: Partial<DataSource>,
-    adminKey: string
+    adminKey: string,
   ): Promise<void> {
     if (!this.verifyAdminKey(adminKey)) {
-      throw new Error('Unauthorized');
+      throw new Error("Unauthorized");
     }
 
     // Update configuration
     const sources = DATA_SOURCES[asset];
-    const index = sources.findIndex(s => s.name === sourceName);
+    const index = sources.findIndex((s) => s.name === sourceName);
 
     if (index >= 0) {
       sources[index] = { ...sources[index], ...config };
-      logger.info('Data source updated', { asset, sourceName, config });
+      logger.info("Data source updated", { asset, sourceName, config });
     }
   }
 
@@ -571,14 +588,14 @@ bots/
 
 ```typescript
 // src/bot.ts
-import { Logger } from './monitoring/logger';
-import { MetricsCollector } from './monitoring/metrics';
-import { AlertService } from './monitoring/alerts';
-import { PriceFetcher } from './fetcher/base';
-import { PriceAggregator } from './processor/aggregator';
-import { PriceValidator } from './processor/validator';
-import { PriceSmoother } from './processor/smoother';
-import { TransactionManager } from './blockchain/transaction';
+import { Logger } from "./monitoring/logger";
+import { MetricsCollector } from "./monitoring/metrics";
+import { AlertService } from "./monitoring/alerts";
+import { PriceFetcher } from "./fetcher/base";
+import { PriceAggregator } from "./processor/aggregator";
+import { PriceValidator } from "./processor/validator";
+import { PriceSmoother } from "./processor/smoother";
+import { TransactionManager } from "./blockchain/transaction";
 
 export class OraclePriceBot {
   private logger: Logger;
@@ -596,9 +613,9 @@ export class OraclePriceBot {
 
   constructor(
     private config: BotConfig,
-    private networkConfig: NetworkConfig
+    private networkConfig: NetworkConfig,
   ) {
-    this.logger = new Logger('OraclePriceBot');
+    this.logger = new Logger("OraclePriceBot");
     this.metrics = new MetricsCollector();
     this.alerts = new AlertService(config.alerting);
 
@@ -612,7 +629,7 @@ export class OraclePriceBot {
 
   private initializeFetchers(): void {
     for (const [asset, sources] of Object.entries(this.config.dataSources)) {
-      const fetchers = sources.map(source => {
+      const fetchers = sources.map((source) => {
         return createFetcher(source);
       });
       this.fetchers.set(asset, fetchers);
@@ -620,7 +637,7 @@ export class OraclePriceBot {
   }
 
   async start(): Promise<void> {
-    this.logger.info('Starting Oracle Price Bot...');
+    this.logger.info("Starting Oracle Price Bot...");
 
     for (const asset of Object.keys(this.config.dataSources)) {
       await this.startAssetUpdates(asset);
@@ -629,7 +646,7 @@ export class OraclePriceBot {
     // Start monitoring
     this.startHealthCheck();
 
-    this.logger.info('Oracle Price Bot started successfully');
+    this.logger.info("Oracle Price Bot started successfully");
   }
 
   private async startAssetUpdates(asset: string): Promise<void> {
@@ -639,7 +656,7 @@ export class OraclePriceBot {
     if (schedule.timeBased.enabled) {
       const interval = setInterval(
         () => this.updateAssetPrice(asset),
-        schedule.timeBased.intervalSeconds * 1000
+        schedule.timeBased.intervalSeconds * 1000,
       );
       this.updateIntervals.set(asset, interval);
     }
@@ -648,7 +665,7 @@ export class OraclePriceBot {
     if (schedule.eventBased.enabled) {
       setInterval(
         () => this.checkPriceChange(asset),
-        schedule.eventBased.checkIntervalSeconds * 1000
+        schedule.eventBased.checkIntervalSeconds * 1000,
       );
     }
 
@@ -658,7 +675,7 @@ export class OraclePriceBot {
 
   private async updateAssetPrice(asset: string): Promise<void> {
     if (this.paused) {
-      this.logger.debug('Bot is paused, skipping update');
+      this.logger.debug("Bot is paused, skipping update");
       return;
     }
 
@@ -667,7 +684,7 @@ export class OraclePriceBot {
     try {
       // 1. Fetch prices from all sources
       const fetchers = this.fetchers.get(asset)!;
-      const pricePromises = fetchers.map(f => f.fetchPrice(asset));
+      const pricePromises = fetchers.map((f) => f.fetchPrice(asset));
       const results = await Promise.allSettled(pricePromises);
 
       const prices: number[] = [];
@@ -675,7 +692,7 @@ export class OraclePriceBot {
 
       for (let i = 0; i < results.length; i++) {
         const result = results[i];
-        if (result.status === 'fulfilled') {
+        if (result.status === "fulfilled") {
           prices.push(result.value);
           weights.push(fetchers[i].getWeight());
           this.metrics.recordSourceSuccess(fetchers[i].getName());
@@ -690,7 +707,7 @@ export class OraclePriceBot {
       // 2. Validate minimum sources
       if (prices.length < this.config.validation[asset].minSources) {
         throw new Error(
-          `Insufficient price sources: ${prices.length} < ${this.config.validation[asset].minSources}`
+          `Insufficient price sources: ${prices.length} < ${this.config.validation[asset].minSources}`,
         );
       }
 
@@ -705,7 +722,7 @@ export class OraclePriceBot {
       const smoothedPrice = this.smoother.smooth(
         asset,
         aggregatedPrice,
-        this.config.smoothing
+        this.config.smoothing,
       );
 
       // 6. Submit to blockchain
@@ -713,26 +730,25 @@ export class OraclePriceBot {
       const txHash = await this.txManager.submitPrice(
         asset,
         smoothedPrice,
-        timestamp
+        timestamp,
       );
 
       // 7. Record metrics
       const latency = Date.now() - startTime;
       this.metrics.recordUpdate(asset, smoothedPrice, latency, true);
 
-      this.logger.info('Price updated successfully', {
+      this.logger.info("Price updated successfully", {
         asset,
         price: smoothedPrice,
         txHash,
         latency,
       });
-
     } catch (error: any) {
-      this.logger.error('Price update failed', { asset, error: error.message });
+      this.logger.error("Price update failed", { asset, error: error.message });
       this.metrics.recordUpdate(asset, 0, Date.now() - startTime, false);
 
       this.alerts.send({
-        severity: 'critical',
+        severity: "critical",
         message: `Price update failed for ${asset}`,
         timestamp: new Date(),
         metadata: { error: error.message },
@@ -750,17 +766,23 @@ export class OraclePriceBot {
 
       if (!lastPrice) return;
 
-      const changePercent = Math.abs((currentPrice - lastPrice) / lastPrice) * 100;
+      const changePercent =
+        Math.abs((currentPrice - lastPrice) / lastPrice) * 100;
 
-      if (changePercent >= this.config.schedule.eventBased.priceChangeThreshold) {
-        this.logger.info('Price change threshold exceeded, triggering update', {
+      if (
+        changePercent >= this.config.schedule.eventBased.priceChangeThreshold
+      ) {
+        this.logger.info("Price change threshold exceeded, triggering update", {
           asset,
           changePercent,
         });
         await this.updateAssetPrice(asset);
       }
     } catch (error: any) {
-      this.logger.error('Price change check failed', { asset, error: error.message });
+      this.logger.error("Price change check failed", {
+        asset,
+        error: error.message,
+      });
     }
   }
 
@@ -772,14 +794,14 @@ export class OraclePriceBot {
   }
 
   async stop(): Promise<void> {
-    this.logger.info('Stopping Oracle Price Bot...');
+    this.logger.info("Stopping Oracle Price Bot...");
 
     for (const interval of this.updateIntervals.values()) {
       clearInterval(interval);
     }
 
     this.updateIntervals.clear();
-    this.logger.info('Oracle Price Bot stopped');
+    this.logger.info("Oracle Price Bot stopped");
   }
 }
 ```
@@ -795,9 +817,7 @@ export interface PriceFetchResult {
 }
 
 export abstract class PriceFetcher {
-  constructor(
-    protected config: DataSource
-  ) {}
+  constructor(protected config: DataSource) {}
 
   abstract fetchPrice(asset: string): Promise<number>;
 
@@ -811,12 +831,12 @@ export abstract class PriceFetcher {
 
   protected async fetchWithTimeout<T>(
     fn: () => Promise<T>,
-    timeout: number
+    timeout: number,
   ): Promise<T> {
     return Promise.race([
       fn(),
       new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), timeout)
+        setTimeout(() => reject(new Error("Request timeout")), timeout),
       ),
     ]);
   }
@@ -827,7 +847,7 @@ export class ChainlinkFetcher extends PriceFetcher {
   async fetchPrice(asset: string): Promise<number> {
     const response = await this.fetchWithTimeout(
       () => fetch(this.config.url),
-      this.config.timeout
+      this.config.timeout,
     );
 
     const data = await response.json();
@@ -839,12 +859,13 @@ export class ChainlinkFetcher extends PriceFetcher {
 export class FranklinTempletonFetcher extends PriceFetcher {
   async fetchPrice(asset: string): Promise<number> {
     const response = await this.fetchWithTimeout(
-      () => fetch(this.config.url, {
-        headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
-        },
-      }),
-      this.config.timeout
+      () =>
+        fetch(this.config.url, {
+          headers: {
+            Authorization: `Bearer ${this.config.apiKey}`,
+          },
+        }),
+      this.config.timeout,
     );
 
     const data = await response.json();
@@ -860,7 +881,7 @@ export class FranklinTempletonFetcher extends PriceFetcher {
 export class PriceAggregator {
   aggregate(prices: number[], weights: number[]): number {
     if (prices.length === 0) {
-      throw new Error('No prices to aggregate');
+      throw new Error("No prices to aggregate");
     }
 
     if (prices.length === 1) {
@@ -871,7 +892,7 @@ export class PriceAggregator {
     const totalWeight = weights.reduce((sum, w) => sum + w, 0);
     const weightedSum = prices.reduce(
       (sum, price, i) => sum + price * weights[i],
-      0
+      0,
     );
 
     return weightedSum / totalWeight;
@@ -902,7 +923,7 @@ export class PriceAggregator {
 
 ```typescript
 // src/blockchain/transaction.ts
-import * as StellarSdk from '@stellar/stellar-sdk';
+import * as StellarSdk from "@stellar/stellar-sdk";
 
 export class TransactionManager {
   private server: StellarSdk.SorobanRpc.Server;
@@ -916,16 +937,16 @@ export class TransactionManager {
   async submitPrice(
     assetAddress: string,
     price: number,
-    timestamp: number
+    timestamp: number,
   ): Promise<string> {
     const priceScaled = BigInt(Math.round(price * 1_000_000)); // 6 decimals
     const botAddress = this.keypair.publicKey();
 
     const args = [
-      StellarSdk.nativeToScVal(assetAddress, 'address'),
-      StellarSdk.nativeToScVal(priceScaled, 'i128'),
-      StellarSdk.nativeToScVal(timestamp, 'u64'),
-      StellarSdk.nativeToScVal(botAddress, 'address'),
+      StellarSdk.nativeToScVal(assetAddress, "address"),
+      StellarSdk.nativeToScVal(priceScaled, "i128"),
+      StellarSdk.nativeToScVal(timestamp, "u64"),
+      StellarSdk.nativeToScVal(botAddress, "address"),
     ];
 
     const account = await this.server.getAccount(botAddress);
@@ -935,7 +956,7 @@ export class TransactionManager {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.config.networkPassphrase,
     })
-      .addOperation(contract.call('set_price', ...args))
+      .addOperation(contract.call("set_price", ...args))
       .setTimeout(30)
       .build();
 
@@ -949,7 +970,7 @@ export class TransactionManager {
     // Assemble
     transaction = StellarSdk.SorobanRpc.assembleTransaction(
       transaction,
-      simulated
+      simulated,
     ).build();
 
     // Sign
@@ -962,13 +983,13 @@ export class TransactionManager {
     let result = await this.server.getTransaction(response.hash);
     let attempts = 0;
 
-    while (result.status === 'NOT_FOUND' && attempts < 20) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    while (result.status === "NOT_FOUND" && attempts < 20) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       result = await this.server.getTransaction(response.hash);
       attempts++;
     }
 
-    if (result.status !== 'SUCCESS') {
+    if (result.status !== "SUCCESS") {
       throw new Error(`Transaction failed: ${result.status}`);
     }
 
@@ -982,16 +1003,17 @@ export class TransactionManager {
 ### Unit Tests
 
 **1. Price Fetcher Tests**
+
 ```typescript
 // tests/unit/fetcher.test.ts
-describe('ChainlinkFetcher', () => {
+describe("ChainlinkFetcher", () => {
   let fetcher: ChainlinkFetcher;
 
   beforeEach(() => {
     fetcher = new ChainlinkFetcher({
-      name: 'Chainlink Test',
-      type: 'chainlink',
-      url: 'https://mock.chainlink.com',
+      name: "Chainlink Test",
+      type: "chainlink",
+      url: "https://mock.chainlink.com",
       weight: 50,
       priority: 1,
       timeout: 5000,
@@ -999,117 +1021,132 @@ describe('ChainlinkFetcher', () => {
     });
   });
 
-  it('should fetch price successfully', async () => {
+  it("should fetch price successfully", async () => {
     // Mock fetch
     global.fetch = jest.fn().mockResolvedValue({
-      json: async () => ({ answer: '100000000' }), // $1.00 with 8 decimals
+      json: async () => ({ answer: "100000000" }), // $1.00 with 8 decimals
     });
 
-    const price = await fetcher.fetchPrice('TBILL');
+    const price = await fetcher.fetchPrice("TBILL");
     expect(price).toBe(1.0);
   });
 
-  it('should timeout on slow response', async () => {
-    global.fetch = jest.fn().mockImplementation(() =>
-      new Promise(resolve => setTimeout(resolve, 10000))
-    );
+  it("should timeout on slow response", async () => {
+    global.fetch = jest
+      .fn()
+      .mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 10000)),
+      );
 
-    await expect(fetcher.fetchPrice('TBILL')).rejects.toThrow('Request timeout');
+    await expect(fetcher.fetchPrice("TBILL")).rejects.toThrow(
+      "Request timeout",
+    );
   });
 
-  it('should handle API errors', async () => {
-    global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+  it("should handle API errors", async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error("Network error"));
 
-    await expect(fetcher.fetchPrice('TBILL')).rejects.toThrow('Network error');
+    await expect(fetcher.fetchPrice("TBILL")).rejects.toThrow("Network error");
   });
 });
 ```
 
 **2. Price Aggregator Tests**
+
 ```typescript
 // tests/unit/aggregator.test.ts
-describe('PriceAggregator', () => {
+describe("PriceAggregator", () => {
   let aggregator: PriceAggregator;
 
   beforeEach(() => {
     aggregator = new PriceAggregator();
   });
 
-  it('should calculate weighted average correctly', () => {
-    const prices = [1.00, 1.02, 0.98];
+  it("should calculate weighted average correctly", () => {
+    const prices = [1.0, 1.02, 0.98];
     const weights = [40, 30, 30];
 
     const result = aggregator.aggregate(prices, weights);
     expect(result).toBeCloseTo(1.002, 3);
   });
 
-  it('should calculate median correctly', () => {
-    const prices = [1.00, 1.02, 0.98, 1.05, 0.95];
+  it("should calculate median correctly", () => {
+    const prices = [1.0, 1.02, 0.98, 1.05, 0.95];
     const result = aggregator.median(prices);
-    expect(result).toBe(1.00);
+    expect(result).toBe(1.0);
   });
 
-  it('should calculate trimmed mean correctly', () => {
-    const prices = [0.90, 1.00, 1.01, 1.02, 1.10]; // Outliers at ends
+  it("should calculate trimmed mean correctly", () => {
+    const prices = [0.9, 1.0, 1.01, 1.02, 1.1]; // Outliers at ends
     const result = aggregator.trimmedMean(prices, 20);
     expect(result).toBeCloseTo(1.01, 2);
   });
 
-  it('should throw on empty prices', () => {
-    expect(() => aggregator.aggregate([], [])).toThrow('No prices to aggregate');
+  it("should throw on empty prices", () => {
+    expect(() => aggregator.aggregate([], [])).toThrow(
+      "No prices to aggregate",
+    );
   });
 });
 ```
 
 **3. Price Validator Tests**
+
 ```typescript
 // tests/unit/validator.test.ts
-describe('PriceValidator', () => {
+describe("PriceValidator", () => {
   let validator: PriceValidator;
 
   beforeEach(() => {
     validator = new PriceValidator({
-      'TBILL': {
+      TBILL: {
         maxDeviationPercent: 5.0,
         minSources: 2,
         maxStaleness: 3600,
         minPrice: 0.95,
-        maxPrice: 1.10,
+        maxPrice: 1.1,
         maxChangePercent: 2.0,
       },
     });
   });
 
-  it('should accept valid price', () => {
-    expect(() => validator.validate('TBILL', 1.00, 0.99)).not.toThrow();
+  it("should accept valid price", () => {
+    expect(() => validator.validate("TBILL", 1.0, 0.99)).not.toThrow();
   });
 
-  it('should reject price below minimum', () => {
-    expect(() => validator.validate('TBILL', 0.90, 0.99)).toThrow('below minimum');
+  it("should reject price below minimum", () => {
+    expect(() => validator.validate("TBILL", 0.9, 0.99)).toThrow(
+      "below minimum",
+    );
   });
 
-  it('should reject price above maximum', () => {
-    expect(() => validator.validate('TBILL', 1.20, 0.99)).toThrow('above maximum');
+  it("should reject price above maximum", () => {
+    expect(() => validator.validate("TBILL", 1.2, 0.99)).toThrow(
+      "above maximum",
+    );
   });
 
-  it('should reject excessive price change', () => {
-    expect(() => validator.validate('TBILL', 1.05, 1.00)).toThrow('exceeds maximum change');
+  it("should reject excessive price change", () => {
+    expect(() => validator.validate("TBILL", 1.05, 1.0)).toThrow(
+      "exceeds maximum change",
+    );
   });
 });
 ```
 
 **4. Price Smoother Tests**
+
 ```typescript
 // tests/unit/smoother.test.ts
-describe('PriceSmoother', () => {
+describe("PriceSmoother", () => {
   let smoother: PriceSmoother;
 
   beforeEach(() => {
     smoother = new PriceSmoother();
   });
 
-  it('should return raw price when smoothing disabled', () => {
-    const result = smoother.smooth('TBILL', 1.05, {
+  it("should return raw price when smoothing disabled", () => {
+    const result = smoother.smooth("TBILL", 1.05, {
       enabled: false,
       alpha: 0.5,
       windowSize: 10,
@@ -1118,27 +1155,27 @@ describe('PriceSmoother', () => {
     expect(result).toBe(1.05);
   });
 
-  it('should smooth prices with EMA', () => {
+  it("should smooth prices with EMA", () => {
     const config = { enabled: true, alpha: 0.5, windowSize: 5 };
 
     // Feed multiple prices
-    smoother.smooth('TBILL', 1.00, config);
-    smoother.smooth('TBILL', 1.10, config);
-    const result = smoother.smooth('TBILL', 1.20, config);
+    smoother.smooth("TBILL", 1.0, config);
+    smoother.smooth("TBILL", 1.1, config);
+    const result = smoother.smooth("TBILL", 1.2, config);
 
     // Should be smoothed (less than raw 1.20)
-    expect(result).toBeLessThan(1.20);
-    expect(result).toBeGreaterThan(1.00);
+    expect(result).toBeLessThan(1.2);
+    expect(result).toBeGreaterThan(1.0);
   });
 
-  it('should maintain separate histories per asset', () => {
+  it("should maintain separate histories per asset", () => {
     const config = { enabled: true, alpha: 0.5, windowSize: 5 };
 
-    smoother.smooth('TBILL', 1.00, config);
-    smoother.smooth('BOND', 2.00, config);
+    smoother.smooth("TBILL", 1.0, config);
+    smoother.smooth("BOND", 2.0, config);
 
-    const tbillResult = smoother.smooth('TBILL', 1.10, config);
-    const bondResult = smoother.smooth('BOND', 2.10, config);
+    const tbillResult = smoother.smooth("TBILL", 1.1, config);
+    const bondResult = smoother.smooth("BOND", 2.1, config);
 
     expect(tbillResult).not.toBe(bondResult);
   });
@@ -1148,9 +1185,10 @@ describe('PriceSmoother', () => {
 ### Integration Tests
 
 **1. End-to-End Update Test**
+
 ```typescript
 // tests/integration/end-to-end.test.ts
-describe('Oracle Price Bot E2E', () => {
+describe("Oracle Price Bot E2E", () => {
   let bot: OraclePriceBot;
   let mockServer: MockStellarServer;
 
@@ -1160,13 +1198,15 @@ describe('Oracle Price Bot E2E', () => {
 
     const config = {
       dataSources: {
-        'TBILL': [
-          createMockDataSource('Source1', 1.00),
-          createMockDataSource('Source2', 1.01),
-          createMockDataSource('Source3', 0.99),
+        TBILL: [
+          createMockDataSource("Source1", 1.0),
+          createMockDataSource("Source2", 1.01),
+          createMockDataSource("Source3", 0.99),
         ],
       },
-      validation: { /* ... */ },
+      validation: {
+        /* ... */
+      },
       schedule: {
         timeBased: { enabled: false },
         eventBased: { enabled: false },
@@ -1182,11 +1222,11 @@ describe('Oracle Price Bot E2E', () => {
     await mockServer.stop();
   });
 
-  it('should fetch, aggregate, and submit price', async () => {
+  it("should fetch, aggregate, and submit price", async () => {
     await bot.start();
 
     // Trigger manual update
-    await bot.updateAssetPrice('TBILL');
+    await bot.updateAssetPrice("TBILL");
 
     // Verify transaction was submitted
     const transactions = mockServer.getSubmittedTransactions();
@@ -1195,21 +1235,21 @@ describe('Oracle Price Bot E2E', () => {
     // Verify price is correct (weighted average of 1.00, 1.01, 0.99)
     const priceArg = transactions[0].operations[0].args[1];
     const price = Number(priceArg) / 1_000_000;
-    expect(price).toBeCloseTo(1.00, 2);
+    expect(price).toBeCloseTo(1.0, 2);
   });
 
-  it('should handle data source failures gracefully', async () => {
+  it("should handle data source failures gracefully", async () => {
     // Make one source fail
     const config = {
       dataSources: {
-        'TBILL': [
-          createMockDataSource('Source1', 1.00),
-          createFailingDataSource('Source2'),
-          createMockDataSource('Source3', 0.99),
+        TBILL: [
+          createMockDataSource("Source1", 1.0),
+          createFailingDataSource("Source2"),
+          createMockDataSource("Source3", 0.99),
         ],
       },
       validation: {
-        'TBILL': { minSources: 2, /* ... */ },
+        TBILL: { minSources: 2 /* ... */ },
       },
       schedule: { manual: { enabled: true } },
     };
@@ -1218,20 +1258,20 @@ describe('Oracle Price Bot E2E', () => {
     await bot.start();
 
     // Should still succeed with 2/3 sources
-    await expect(bot.updateAssetPrice('TBILL')).resolves.not.toThrow();
+    await expect(bot.updateAssetPrice("TBILL")).resolves.not.toThrow();
   });
 
-  it('should fail when insufficient sources', async () => {
+  it("should fail when insufficient sources", async () => {
     const config = {
       dataSources: {
-        'TBILL': [
-          createFailingDataSource('Source1'),
-          createFailingDataSource('Source2'),
-          createMockDataSource('Source3', 1.00),
+        TBILL: [
+          createFailingDataSource("Source1"),
+          createFailingDataSource("Source2"),
+          createMockDataSource("Source3", 1.0),
         ],
       },
       validation: {
-        'TBILL': { minSources: 2, /* ... */ },
+        TBILL: { minSources: 2 /* ... */ },
       },
       schedule: { manual: { enabled: true } },
     };
@@ -1240,15 +1280,18 @@ describe('Oracle Price Bot E2E', () => {
     await bot.start();
 
     // Should fail with only 1/3 sources working
-    await expect(bot.updateAssetPrice('TBILL')).rejects.toThrow('Insufficient price sources');
+    await expect(bot.updateAssetPrice("TBILL")).rejects.toThrow(
+      "Insufficient price sources",
+    );
   });
 });
 ```
 
 **2. Contract Integration Test**
+
 ```typescript
 // tests/integration/contract.test.ts
-describe('Oracle Contract Integration', () => {
+describe("Oracle Contract Integration", () => {
   let testEnv: TestEnvironment;
   let bot: OraclePriceBot;
   let oracleContract: OracleContractClient;
@@ -1263,32 +1306,34 @@ describe('Oracle Contract Integration', () => {
     await bot.start();
   });
 
-  it('should update oracle price on-chain', async () => {
+  it("should update oracle price on-chain", async () => {
     const assetAddress = testEnv.rwaTokenAddress;
 
     // Trigger update
     await bot.updateAssetPrice(assetAddress);
 
     // Wait for confirmation
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
     // Verify price on-chain
-    const [price, timestamp] = await oracleContract.get_price({ asset: assetAddress });
+    const [price, timestamp] = await oracleContract.get_price({
+      asset: assetAddress,
+    });
 
-    expect(Number(price) / 1_000_000).toBeCloseTo(1.00, 2);
+    expect(Number(price) / 1_000_000).toBeCloseTo(1.0, 2);
     expect(timestamp).toBeGreaterThan(0);
   });
 
-  it('should reject stale prices', async () => {
+  it("should reject stale prices", async () => {
     const assetAddress = testEnv.rwaTokenAddress;
 
     // Submit initial price
     await bot.updateAssetPrice(assetAddress);
 
     // Advance time by 25 hours (past staleness threshold)
-    testEnv.env.ledger().set_timestamp(
-      testEnv.env.ledger().timestamp() + 25 * 3600
-    );
+    testEnv.env
+      .ledger()
+      .set_timestamp(testEnv.env.ledger().timestamp() + 25 * 3600);
 
     // Try to use stale price in lending pool
     await expect(
@@ -1297,8 +1342,8 @@ describe('Oracle Contract Integration', () => {
         collateral_amount: BigInt(1000),
         loan_amount: BigInt(500),
         duration_months: 12,
-      })
-    ).rejects.toThrow('Oracle price is stale');
+      }),
+    ).rejects.toThrow("Oracle price is stale");
   });
 });
 ```
@@ -1306,10 +1351,11 @@ describe('Oracle Contract Integration', () => {
 ### Load Tests
 
 **1. High-Frequency Update Test**
+
 ```typescript
 // tests/load/high-frequency.test.ts
-describe('High-Frequency Updates', () => {
-  it('should handle 1 update per second for 5 minutes', async () => {
+describe("High-Frequency Updates", () => {
+  it("should handle 1 update per second for 5 minutes", async () => {
     const bot = createTestBot({
       schedule: {
         timeBased: {
@@ -1322,7 +1368,7 @@ describe('High-Frequency Updates', () => {
     await bot.start();
 
     // Run for 5 minutes
-    await new Promise(resolve => setTimeout(resolve, 5 * 60 * 1000));
+    await new Promise((resolve) => setTimeout(resolve, 5 * 60 * 1000));
 
     await bot.stop();
 
@@ -1333,7 +1379,8 @@ describe('High-Frequency Updates', () => {
     expect(metrics.successfulUpdates).toBeLessThan(310);
 
     // Success rate should be > 95%
-    const successRate = metrics.successfulUpdates /
+    const successRate =
+      metrics.successfulUpdates /
       (metrics.successfulUpdates + metrics.failedUpdates);
     expect(successRate).toBeGreaterThan(0.95);
   });
@@ -1341,18 +1388,19 @@ describe('High-Frequency Updates', () => {
 ```
 
 **2. Multiple Asset Test**
+
 ```typescript
 // tests/load/multiple-assets.test.ts
-describe('Multiple Assets', () => {
-  it('should handle 10 assets simultaneously', async () => {
+describe("Multiple Assets", () => {
+  it("should handle 10 assets simultaneously", async () => {
     const assets = Array.from({ length: 10 }, (_, i) => `ASSET_${i}`);
 
     const config = {
       dataSources: Object.fromEntries(
-        assets.map(asset => [
+        assets.map((asset) => [
           asset,
-          [createMockDataSource('Source', 1.00 + Math.random() * 0.1)],
-        ])
+          [createMockDataSource("Source", 1.0 + Math.random() * 0.1)],
+        ]),
       ),
       schedule: {
         timeBased: { enabled: true, intervalSeconds: 60 },
@@ -1363,7 +1411,7 @@ describe('Multiple Assets', () => {
     await bot.start();
 
     // Run for 2 minutes
-    await new Promise(resolve => setTimeout(resolve, 2 * 60 * 1000));
+    await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
 
     await bot.stop();
 
@@ -1381,10 +1429,11 @@ describe('Multiple Assets', () => {
 ### Edge Case Tests
 
 **1. Price Volatility Test**
+
 ```typescript
 // tests/edge-cases/volatility.test.ts
-describe('Price Volatility', () => {
-  it('should detect and alert on rapid price changes', async () => {
+describe("Price Volatility", () => {
+  it("should detect and alert on rapid price changes", async () => {
     const alerts: Alert[] = [];
     const bot = createTestBot({
       alerting: {
@@ -1393,42 +1442,43 @@ describe('Price Volatility', () => {
     });
 
     // Simulate volatile prices
-    const mockFetcher = createMockDataSource('Volatile', 1.00);
-    mockFetcher.setPrice(1.00);
-    await bot.updateAssetPrice('TBILL');
+    const mockFetcher = createMockDataSource("Volatile", 1.0);
+    mockFetcher.setPrice(1.0);
+    await bot.updateAssetPrice("TBILL");
 
-    mockFetcher.setPrice(1.10); // 10% jump
-    await bot.updateAssetPrice('TBILL');
+    mockFetcher.setPrice(1.1); // 10% jump
+    await bot.updateAssetPrice("TBILL");
 
     // Should have warning alert
-    const volatilityAlerts = alerts.filter(a =>
-      a.message.includes('volatility')
+    const volatilityAlerts = alerts.filter((a) =>
+      a.message.includes("volatility"),
     );
     expect(volatilityAlerts).toHaveLength(1);
-    expect(volatilityAlerts[0].severity).toBe('warning');
+    expect(volatilityAlerts[0].severity).toBe("warning");
   });
 });
 ```
 
 **2. Network Failure Test**
+
 ```typescript
 // tests/edge-cases/network-failure.test.ts
-describe('Network Failures', () => {
-  it('should retry on network errors', async () => {
+describe("Network Failures", () => {
+  it("should retry on network errors", async () => {
     let attempts = 0;
     const mockFetcher = {
       fetchPrice: jest.fn().mockImplementation(() => {
         attempts++;
         if (attempts < 3) {
-          throw new Error('Network request failed');
+          throw new Error("Network request failed");
         }
-        return 1.00;
+        return 1.0;
       }),
     };
 
     const bot = createTestBot({
       dataSources: {
-        'TBILL': [mockFetcher],
+        TBILL: [mockFetcher],
       },
       retry: {
         maxRetries: 3,
@@ -1436,23 +1486,23 @@ describe('Network Failures', () => {
       },
     });
 
-    await bot.updateAssetPrice('TBILL');
+    await bot.updateAssetPrice("TBILL");
 
     // Should have retried 3 times
     expect(attempts).toBe(3);
   });
 
-  it('should fail after max retries', async () => {
+  it("should fail after max retries", async () => {
     const mockFetcher = {
-      fetchPrice: jest.fn().mockRejectedValue(new Error('Network down')),
+      fetchPrice: jest.fn().mockRejectedValue(new Error("Network down")),
     };
 
     const bot = createTestBot({
-      dataSources: { 'TBILL': [mockFetcher] },
+      dataSources: { TBILL: [mockFetcher] },
       retry: { maxRetries: 2 },
     });
 
-    await expect(bot.updateAssetPrice('TBILL')).rejects.toThrow('Network down');
+    await expect(bot.updateAssetPrice("TBILL")).rejects.toThrow("Network down");
     expect(mockFetcher.fetchPrice).toHaveBeenCalledTimes(3); // Initial + 2 retries
   });
 });
@@ -1489,7 +1539,7 @@ CMD ["node", "dist/index.js"]
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
+version: "3.8"
 
 services:
   oracle-bot:
@@ -1549,28 +1599,28 @@ The bot exposes a REST API for monitoring:
 
 ```typescript
 // src/admin/api.ts
-import express from 'express';
+import express from "express";
 
 const app = express();
 
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   const health = bot.getHealth();
   res.json(health);
 });
 
-app.get('/metrics', (req, res) => {
+app.get("/metrics", (req, res) => {
   const metrics = bot.getMetrics();
   res.json(metrics);
 });
 
-app.get('/status', (req, res) => {
+app.get("/status", (req, res) => {
   const status = bot.getStatus();
   res.json(status);
 });
 
-app.post('/admin/trigger-update/:asset', async (req, res) => {
+app.post("/admin/trigger-update/:asset", async (req, res) => {
   const { asset } = req.params;
-  const adminKey = req.headers['x-admin-key'];
+  const adminKey = req.headers["x-admin-key"];
 
   try {
     await bot.admin.forceUpdatePrice(asset, adminKey);
@@ -1580,8 +1630,8 @@ app.post('/admin/trigger-update/:asset', async (req, res) => {
   }
 });
 
-app.post('/admin/pause', async (req, res) => {
-  const adminKey = req.headers['x-admin-key'];
+app.post("/admin/pause", async (req, res) => {
+  const adminKey = req.headers["x-admin-key"];
 
   try {
     await bot.admin.pauseBot(adminKey);
@@ -1592,7 +1642,7 @@ app.post('/admin/pause', async (req, res) => {
 });
 
 app.listen(3000, () => {
-  console.log('Admin API listening on port 3000');
+  console.log("Admin API listening on port 3000");
 });
 ```
 
@@ -1613,6 +1663,7 @@ The Oracle Price Bot is a production-ready system with:
 ✅ **REST API** for monitoring and control
 
 **Next Steps**:
+
 1. Review and approve this specification
 2. Implement the Oracle Price Bot code
 3. Deploy to testnet for testing

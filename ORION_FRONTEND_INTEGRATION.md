@@ -9,6 +9,7 @@ Complete integration guide for connecting your Orion Protocol frontend to the de
 This guide maps your frontend architecture (Landing → Dashboard → Stake/Borrow/Profile) to the deployed smart contracts with exact function calls, data flows, and wallet integration patterns.
 
 **Your Frontend Stack:**
+
 - Landing page with "Launch App"
 - Dashboard with sidebar navigation (Stake, Borrow, Profile)
 - Wallet integration (Freighter)
@@ -17,6 +18,7 @@ This guide maps your frontend architecture (Landing → Dashboard → Stake/Borr
 - Admin panel for liquidity management
 
 **Deployed Contracts:**
+
 - ✅ MockRWA (permissioned RWA token with whitelist)
 - ✅ stRWA (receipt token for staked RWA)
 - ✅ RWA Vault (custody + yield distribution)
@@ -61,7 +63,7 @@ npm install ../frontend-sdk
 
 ```typescript
 // src/config/contracts.ts
-import addresses from '../../.soroban/contract-addresses-testnet.json';
+import addresses from "../../.soroban/contract-addresses-testnet.json";
 
 export const CONTRACTS = addresses.contracts;
 // {
@@ -75,9 +77,9 @@ export const CONTRACTS = addresses.contracts;
 
 export const NETWORK_CONFIG = {
   testnet: {
-    networkPassphrase: 'Test SDF Network ; September 2015',
-    rpcUrl: 'https://soroban-testnet.stellar.org:443',
-  }
+    networkPassphrase: "Test SDF Network ; September 2015",
+    rpcUrl: "https://soroban-testnet.stellar.org:443",
+  },
 };
 ```
 
@@ -92,6 +94,7 @@ export const NETWORK_CONFIG = {
 **Smart Contract Interaction:** None
 
 **Implementation:**
+
 ```typescript
 // No contract calls needed
 // Just route to /dashboard on "Launch App" click
@@ -107,15 +110,16 @@ export const NETWORK_CONFIG = {
 **Purpose:** Connect Freighter wallet and check whitelist status
 
 **Smart Contract Reads:**
+
 - `MockRWA.allowed(userAddress)` — Check if user is whitelisted
 
 **Implementation:**
 
 ```typescript
 // src/hooks/useWallet.ts
-import { useState } from 'react';
-import * as StellarSdk from '@stellar/stellar-sdk';
-import { CONTRACTS, NETWORK_CONFIG } from '@/config/contracts';
+import { useState } from "react";
+import * as StellarSdk from "@stellar/stellar-sdk";
+import { CONTRACTS, NETWORK_CONFIG } from "@/config/contracts";
 
 export function useWallet() {
   const [connected, setConnected] = useState(false);
@@ -124,7 +128,7 @@ export function useWallet() {
 
   async function connect() {
     if (!window.freighter) {
-      throw new Error('Please install Freighter wallet');
+      throw new Error("Please install Freighter wallet");
     }
 
     // Get public key from Freighter
@@ -138,7 +142,7 @@ export function useWallet() {
 
   async function checkWhitelist(address: string) {
     const server = new StellarSdk.SorobanRpc.Server(
-      NETWORK_CONFIG.testnet.rpcUrl
+      NETWORK_CONFIG.testnet.rpcUrl,
     );
 
     try {
@@ -151,9 +155,9 @@ export function useWallet() {
       })
         .addOperation(
           contract.call(
-            'allowed',
-            StellarSdk.nativeToScVal(address, 'address')
-          )
+            "allowed",
+            StellarSdk.nativeToScVal(address, "address"),
+          ),
         )
         .setTimeout(30)
         .build();
@@ -165,24 +169,23 @@ export function useWallet() {
         setIsWhitelisted(!!allowed);
       }
     } catch (error) {
-      console.error('Whitelist check failed:', error);
+      console.error("Whitelist check failed:", error);
       setIsWhitelisted(false);
     }
   }
 
   async function signTransaction(tx: StellarSdk.Transaction) {
     if (!window.freighter) {
-      throw new Error('Freighter not available');
+      throw new Error("Freighter not available");
     }
 
-    const signedTxXDR = await window.freighter.signTransaction(
-      tx.toXDR(),
-      { network: 'testnet' }
-    );
+    const signedTxXDR = await window.freighter.signTransaction(tx.toXDR(), {
+      network: "testnet",
+    });
 
     return StellarSdk.TransactionBuilder.fromXDR(
       signedTxXDR,
-      NETWORK_CONFIG.testnet.networkPassphrase
+      NETWORK_CONFIG.testnet.networkPassphrase,
     );
   }
 
@@ -197,24 +200,26 @@ export function useWallet() {
 ```
 
 **UI Toast Notifications:**
+
 ```typescript
 // On successful connection
-toast.success('Wallet connected');
+toast.success("Wallet connected");
 
 // While checking whitelist
-toast.info('Checking whitelist status...');
+toast.info("Checking whitelist status...");
 
 // If not whitelisted
 if (!isWhitelisted) {
-  toast.error('Wallet not whitelisted. Contact your partner institution.');
+  toast.error("Wallet not whitelisted. Contact your partner institution.");
   // Disable Stake/Borrow sections
 }
 
 // If whitelisted
-toast.success('✅ Whitelisted - Full access enabled');
+toast.success("✅ Whitelisted - Full access enabled");
 ```
 
 **UI Gating:**
+
 ```typescript
 // Disable actions if not whitelisted
 <StakeButton disabled={!isWhitelisted}>
@@ -229,31 +234,32 @@ toast.success('✅ Whitelisted - Full access enabled');
 **Purpose:** Portfolio overview and risk metrics
 
 **Smart Contract Reads:**
+
 ```typescript
 // User balances
-MockRWA.balance(userAddress)      // RWA balance
-stRWA.balance(userAddress)         // stRWA balance
-USDC.balance(userAddress)          // USDC balance
+MockRWA.balance(userAddress); // RWA balance
+stRWA.balance(userAddress); // stRWA balance
+USDC.balance(userAddress); // USDC balance
 
 // Vault stats
-Vault.get_stake_info(userAddress)  // User's staked amount
-Vault.get_claimable_yield(userAddress) // Claimable yield
+Vault.get_stake_info(userAddress); // User's staked amount
+Vault.get_claimable_yield(userAddress); // Claimable yield
 
 // Loan status
-LendingPool.get_loan(userAddress)  // Loan details
-LendingPool.get_lp_deposit(userAddress) // LP deposits
+LendingPool.get_loan(userAddress); // Loan details
+LendingPool.get_lp_deposit(userAddress); // LP deposits
 
 // Oracle price
-Oracle.get_price(stRwaAddress)     // stRWA price feed
+Oracle.get_price(stRwaAddress); // stRWA price feed
 ```
 
 **Implementation:**
 
 ```typescript
 // src/hooks/useDashboard.ts
-import { useState, useEffect } from 'react';
-import * as StellarSdk from '@stellar/stellar-sdk';
-import { CONTRACTS, NETWORK_CONFIG } from '@/config/contracts';
+import { useState, useEffect } from "react";
+import * as StellarSdk from "@stellar/stellar-sdk";
+import { CONTRACTS, NETWORK_CONFIG } from "@/config/contracts";
 
 interface DashboardData {
   rwaBalance: bigint;
@@ -273,7 +279,7 @@ export function useDashboard(userAddress: string) {
   async function fetchDashboard() {
     setLoading(true);
     const server = new StellarSdk.SorobanRpc.Server(
-      NETWORK_CONFIG.testnet.rpcUrl
+      NETWORK_CONFIG.testnet.rpcUrl,
     );
 
     try {
@@ -288,11 +294,10 @@ export function useDashboard(userAddress: string) {
       ]);
 
       // Calculate derived metrics
-      const collateralValue = stRwa * price / BigInt(1_000000);
+      const collateralValue = (stRwa * price) / BigInt(1_000000);
       const debt = loan?.outstandingDebt || BigInt(0);
-      const healthFactor = debt > 0
-        ? Number(collateralValue * BigInt(100) / debt) / 100
-        : 999;
+      const healthFactor =
+        debt > 0 ? Number((collateralValue * BigInt(100)) / debt) / 100 : 999;
 
       setData({
         rwaBalance: rwa,
@@ -305,7 +310,7 @@ export function useDashboard(userAddress: string) {
         positionValue: collateralValue + usdc,
       });
     } catch (error) {
-      console.error('Dashboard fetch failed:', error);
+      console.error("Dashboard fetch failed:", error);
     } finally {
       setLoading(false);
     }
@@ -327,7 +332,7 @@ export function useDashboard(userAddress: string) {
 async function getTokenBalance(
   server: StellarSdk.SorobanRpc.Server,
   tokenAddress: string,
-  userAddress: string
+  userAddress: string,
 ): Promise<bigint> {
   // Implementation similar to wallet hook
   // Returns balance from token.balance(userAddress)
@@ -336,7 +341,7 @@ async function getTokenBalance(
 // Helper: Get claimable yield
 async function getClaimableYield(
   server: StellarSdk.SorobanRpc.Server,
-  userAddress: string
+  userAddress: string,
 ): Promise<bigint> {
   // Call Vault.get_claimable_yield(userAddress)
 }
@@ -344,14 +349,14 @@ async function getClaimableYield(
 // Helper: Get loan info
 async function getLoan(
   server: StellarSdk.SorobanRpc.Server,
-  userAddress: string
+  userAddress: string,
 ): Promise<LoanInfo | null> {
   // Call LendingPool.get_loan(userAddress)
 }
 
 // Helper: Get stRWA price
 async function getStRwaPrice(
-  server: StellarSdk.SorobanRpc.Server
+  server: StellarSdk.SorobanRpc.Server,
 ): Promise<bigint> {
   // Call Oracle.get_price(stRwaAddress)
   // Returns price with 6 decimals (1_000000 = $1)
@@ -395,34 +400,36 @@ function getHealthColor(health: number) {
 **Purpose:** Stake RWA → receive stRWA + manage yield
 
 **Smart Contract Writes:**
+
 ```typescript
 // 1. Approve RWA tokens
-MockRWA.approve(vaultAddress, amount, expirationLedger)
+MockRWA.approve(vaultAddress, amount, expirationLedger);
 
 // 2. Stake RWA
-Vault.stake(userAddress, amount)
+Vault.stake(userAddress, amount);
 
 // 3. Unstake stRWA
-Vault.unstake(userAddress, amount)
+Vault.unstake(userAddress, amount);
 
 // 4. Claim yield
-Vault.claim_yield(userAddress)
+Vault.claim_yield(userAddress);
 ```
 
 **Smart Contract Reads:**
+
 ```typescript
-Vault.get_claimable_yield(userAddress)
-MockRWA.balance(userAddress)
-stRWA.balance(userAddress)
+Vault.get_claimable_yield(userAddress);
+MockRWA.balance(userAddress);
+stRWA.balance(userAddress);
 ```
 
 **Implementation:**
 
 ```typescript
 // src/hooks/useVault.ts
-import { useState } from 'react';
-import * as StellarSdk from '@stellar/stellar-sdk';
-import { CONTRACTS, NETWORK_CONFIG } from '@/config/contracts';
+import { useState } from "react";
+import * as StellarSdk from "@stellar/stellar-sdk";
+import { CONTRACTS, NETWORK_CONFIG } from "@/config/contracts";
 
 export function useVault(userAddress: string, signFn) {
   const [loading, setLoading] = useState(false);
@@ -430,51 +437,50 @@ export function useVault(userAddress: string, signFn) {
   async function stake(amount: bigint) {
     setLoading(true);
     const server = new StellarSdk.SorobanRpc.Server(
-      NETWORK_CONFIG.testnet.rpcUrl
+      NETWORK_CONFIG.testnet.rpcUrl,
     );
 
     try {
       // Step 1: Approve RWA tokens
-      toast.info('Approving RWA tokens...');
+      toast.info("Approving RWA tokens...");
 
       const approveTx = await buildTransaction(
         server,
         userAddress,
         CONTRACTS.rwaToken,
-        'approve',
+        "approve",
         [
-          StellarSdk.nativeToScVal(userAddress, 'address'),
-          StellarSdk.nativeToScVal(CONTRACTS.vault, 'address'),
-          StellarSdk.nativeToScVal(amount, 'i128'),
-          StellarSdk.nativeToScVal(1000000, 'u32'), // expiration ledger
-        ]
+          StellarSdk.nativeToScVal(userAddress, "address"),
+          StellarSdk.nativeToScVal(CONTRACTS.vault, "address"),
+          StellarSdk.nativeToScVal(amount, "i128"),
+          StellarSdk.nativeToScVal(1000000, "u32"), // expiration ledger
+        ],
       );
 
       const signedApproveTx = await signFn(approveTx);
       await submitTransaction(server, signedApproveTx);
 
-      toast.success('✅ RWA tokens approved');
+      toast.success("✅ RWA tokens approved");
 
       // Step 2: Stake
-      toast.info('Staking RWA...');
+      toast.info("Staking RWA...");
 
       const stakeTx = await buildTransaction(
         server,
         userAddress,
         CONTRACTS.vault,
-        'stake',
+        "stake",
         [
-          StellarSdk.nativeToScVal(userAddress, 'address'),
-          StellarSdk.nativeToScVal(amount, 'i128'),
-        ]
+          StellarSdk.nativeToScVal(userAddress, "address"),
+          StellarSdk.nativeToScVal(amount, "i128"),
+        ],
       );
 
       const signedStakeTx = await signFn(stakeTx);
       const result = await submitTransaction(server, signedStakeTx);
 
-      toast.success('✅ stRWA minted successfully');
+      toast.success("✅ stRWA minted successfully");
       return result;
-
     } catch (error: any) {
       toast.error(`Stake failed: ${error.message}`);
       throw error;
@@ -487,23 +493,23 @@ export function useVault(userAddress: string, signFn) {
     setLoading(true);
 
     try {
-      toast.info('Unstaking stRWA...');
+      toast.info("Unstaking stRWA...");
 
       const tx = await buildTransaction(
         server,
         userAddress,
         CONTRACTS.vault,
-        'unstake',
+        "unstake",
         [
-          StellarSdk.nativeToScVal(userAddress, 'address'),
-          StellarSdk.nativeToScVal(amount, 'i128'),
-        ]
+          StellarSdk.nativeToScVal(userAddress, "address"),
+          StellarSdk.nativeToScVal(amount, "i128"),
+        ],
       );
 
       const signedTx = await signFn(tx);
       await submitTransaction(server, signedTx);
 
-      toast.success('✅ RWA tokens returned');
+      toast.success("✅ RWA tokens returned");
     } catch (error: any) {
       toast.error(`Unstake failed: ${error.message}`);
       throw error;
@@ -516,20 +522,20 @@ export function useVault(userAddress: string, signFn) {
     setLoading(true);
 
     try {
-      toast.info('Claiming yield...');
+      toast.info("Claiming yield...");
 
       const tx = await buildTransaction(
         server,
         userAddress,
         CONTRACTS.vault,
-        'claim_yield',
-        [StellarSdk.nativeToScVal(userAddress, 'address')]
+        "claim_yield",
+        [StellarSdk.nativeToScVal(userAddress, "address")],
       );
 
       const signedTx = await signFn(tx);
       await submitTransaction(server, signedTx);
 
-      toast.success('✅ Yield claimed');
+      toast.success("✅ Yield claimed");
     } catch (error: any) {
       toast.error(`Claim failed: ${error.message}`);
       throw error;
@@ -547,7 +553,7 @@ async function buildTransaction(
   sourceAccount: string,
   contractId: string,
   method: string,
-  args: StellarSdk.xdr.ScVal[]
+  args: StellarSdk.xdr.ScVal[],
 ): Promise<StellarSdk.Transaction> {
   const account = await server.getAccount(sourceAccount);
   const contract = new StellarSdk.Contract(contractId);
@@ -565,7 +571,7 @@ async function buildTransaction(
   if (StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
     return StellarSdk.SorobanRpc.assembleTransaction(
       transaction,
-      simulated
+      simulated,
     ).build();
   } else {
     throw new Error(`Simulation failed: ${simulated.error}`);
@@ -574,7 +580,7 @@ async function buildTransaction(
 
 async function submitTransaction(
   server: StellarSdk.SorobanRpc.Server,
-  tx: StellarSdk.Transaction
+  tx: StellarSdk.Transaction,
 ) {
   const response = await server.sendTransaction(tx);
 
@@ -582,13 +588,13 @@ async function submitTransaction(
   let result = await server.getTransaction(response.hash);
   let attempts = 0;
 
-  while (result.status === 'NOT_FOUND' && attempts < 20) {
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  while (result.status === "NOT_FOUND" && attempts < 20) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     result = await server.getTransaction(response.hash);
     attempts++;
   }
 
-  if (result.status === 'SUCCESS') {
+  if (result.status === "SUCCESS") {
     return result;
   } else {
     throw new Error(`Transaction failed: ${result.status}`);
@@ -709,31 +715,33 @@ async function mintTestRWA(userAddress: string, signFn) {
 **Purpose:** Deposit stRWA collateral, borrow USDC, manage loans
 
 **Smart Contract Writes:**
+
 ```typescript
 // 1. Approve stRWA as collateral
-stRWA.approve(lendingPoolAddress, amount, expirationLedger)
+stRWA.approve(lendingPoolAddress, amount, expirationLedger);
 
 // 2. Originate loan
 LendingPool.originate_loan(
   borrower,
   collateralAmount,
   loanAmount,
-  durationMonths
-)
+  durationMonths,
+);
 
 // 3. Repay loan
-LendingPool.repay_loan(borrower, amount)
+LendingPool.repay_loan(borrower, amount);
 
 // 4. Close loan early
-LendingPool.close_loan_early(borrower)
+LendingPool.close_loan_early(borrower);
 ```
 
 **Smart Contract Reads:**
+
 ```typescript
-LendingPool.get_loan(borrower)
-LendingPool.get_available_liquidity()
-Oracle.get_price(stRwaAddress)
-Vault.get_claimable_yield(borrower)  // For auto-repay UI state
+LendingPool.get_loan(borrower);
+LendingPool.get_available_liquidity();
+Oracle.get_price(stRwaAddress);
+Vault.get_claimable_yield(borrower); // For auto-repay UI state
 ```
 
 **Implementation:**
@@ -746,49 +754,48 @@ export function useLending(userAddress: string, signFn) {
   async function borrowUSDC(
     collateralAmount: bigint,
     loanAmount: bigint,
-    durationMonths: number
+    durationMonths: number,
   ) {
     setLoading(true);
 
     try {
       // Step 1: Approve stRWA collateral
-      toast.info('Approving collateral...');
+      toast.info("Approving collateral...");
 
       const approveTx = await buildTransaction(
         server,
         userAddress,
         CONTRACTS.stRwaToken,
-        'approve',
+        "approve",
         [
-          StellarSdk.nativeToScVal(userAddress, 'address'),
-          StellarSdk.nativeToScVal(CONTRACTS.lendingPool, 'address'),
-          StellarSdk.nativeToScVal(collateralAmount, 'i128'),
-          StellarSdk.nativeToScVal(1000000, 'u32'),
-        ]
+          StellarSdk.nativeToScVal(userAddress, "address"),
+          StellarSdk.nativeToScVal(CONTRACTS.lendingPool, "address"),
+          StellarSdk.nativeToScVal(collateralAmount, "i128"),
+          StellarSdk.nativeToScVal(1000000, "u32"),
+        ],
       );
 
       await submitTransaction(server, await signFn(approveTx));
-      toast.success('✅ Collateral approved');
+      toast.success("✅ Collateral approved");
 
       // Step 2: Originate loan
-      toast.info('Originating loan...');
+      toast.info("Originating loan...");
 
       const borrowTx = await buildTransaction(
         server,
         userAddress,
         CONTRACTS.lendingPool,
-        'originate_loan',
+        "originate_loan",
         [
-          StellarSdk.nativeToScVal(userAddress, 'address'),
-          StellarSdk.nativeToScVal(collateralAmount, 'i128'),
-          StellarSdk.nativeToScVal(loanAmount, 'i128'),
-          StellarSdk.nativeToScVal(durationMonths, 'u32'),
-        ]
+          StellarSdk.nativeToScVal(userAddress, "address"),
+          StellarSdk.nativeToScVal(collateralAmount, "i128"),
+          StellarSdk.nativeToScVal(loanAmount, "i128"),
+          StellarSdk.nativeToScVal(durationMonths, "u32"),
+        ],
       );
 
       await submitTransaction(server, await signFn(borrowTx));
-      toast.success('✅ USDC borrowed successfully');
-
+      toast.success("✅ USDC borrowed successfully");
     } catch (error: any) {
       toast.error(`Borrow failed: ${error.message}`);
       throw error;
@@ -801,20 +808,20 @@ export function useLending(userAddress: string, signFn) {
     setLoading(true);
 
     try {
-      toast.info('Repaying loan...');
+      toast.info("Repaying loan...");
 
       // First approve USDC
       const approveTx = await buildTransaction(
         server,
         userAddress,
         CONTRACTS.usdc,
-        'approve',
+        "approve",
         [
-          StellarSdk.nativeToScVal(userAddress, 'address'),
-          StellarSdk.nativeToScVal(CONTRACTS.lendingPool, 'address'),
-          StellarSdk.nativeToScVal(amount, 'i128'),
-          StellarSdk.nativeToScVal(1000000, 'u32'),
-        ]
+          StellarSdk.nativeToScVal(userAddress, "address"),
+          StellarSdk.nativeToScVal(CONTRACTS.lendingPool, "address"),
+          StellarSdk.nativeToScVal(amount, "i128"),
+          StellarSdk.nativeToScVal(1000000, "u32"),
+        ],
       );
 
       await submitTransaction(server, await signFn(approveTx));
@@ -824,16 +831,15 @@ export function useLending(userAddress: string, signFn) {
         server,
         userAddress,
         CONTRACTS.lendingPool,
-        'repay_loan',
+        "repay_loan",
         [
-          StellarSdk.nativeToScVal(userAddress, 'address'),
-          StellarSdk.nativeToScVal(amount, 'i128'),
-        ]
+          StellarSdk.nativeToScVal(userAddress, "address"),
+          StellarSdk.nativeToScVal(amount, "i128"),
+        ],
       );
 
       await submitTransaction(server, await signFn(repayTx));
-      toast.success('✅ Loan repaid');
-
+      toast.success("✅ Loan repaid");
     } catch (error: any) {
       toast.error(`Repay failed: ${error.message}`);
       throw error;
@@ -1046,21 +1052,22 @@ export function AutoRepayModal({ userAddress, loanAmount }) {
 **Purpose:** User activity overview and auto-repay management
 
 **Smart Contract Reads:**
+
 ```typescript
 // All user balances and positions
-MockRWA.balance(userAddress)
-stRWA.balance(userAddress)
-USDC.balance(userAddress)
+MockRWA.balance(userAddress);
+stRWA.balance(userAddress);
+USDC.balance(userAddress);
 
 // Vault info
-Vault.get_stake_info(userAddress)
-Vault.get_claimable_yield(userAddress)
+Vault.get_stake_info(userAddress);
+Vault.get_claimable_yield(userAddress);
 
 // Loan info
-LendingPool.get_loan(userAddress)
+LendingPool.get_loan(userAddress);
 
 // LP deposits
-LendingPool.get_lp_deposit(userAddress)
+LendingPool.get_lp_deposit(userAddress);
 ```
 
 **Implementation:**
@@ -1251,18 +1258,19 @@ export function AutoRepayOffModal({ totalYield, yieldUsed, remainingLoan, onConf
 **Purpose:** Manage LP liquidity pool (testnet demo only)
 
 **Smart Contract Writes:**
+
 ```typescript
 // LP deposit USDC
-LendingPool.lp_deposit(admin, amount)
+LendingPool.lp_deposit(admin, amount);
 
 // LP withdraw USDC
-LendingPool.lp_withdraw(admin, amount)
+LendingPool.lp_withdraw(admin, amount);
 
 // Update oracle price (demo fallback)
-Oracle.set_price(asset, price, bot)
+Oracle.set_price(asset, price, bot);
 
 // Fund yield to vault (simulate institutional yield)
-Vault.admin_fund_yield(amount)
+Vault.admin_fund_yield(amount);
 ```
 
 **Implementation:**
@@ -1394,25 +1402,32 @@ export function useLiquidationMonitor(userAddress: string) {
       if (!loan) return;
 
       const price = await getStRwaPrice();
-      const collateralValue = loan.collateralAmount * price / BigInt(1_000000);
+      const collateralValue =
+        (loan.collateralAmount * price) / BigInt(1_000000);
       const debt = loan.outstandingDebt + loan.penalties;
-      const healthFactor = Number(collateralValue * BigInt(100) / debt) / 100;
+      const healthFactor = Number((collateralValue * BigInt(100)) / debt) / 100;
 
       if (healthFactor < 1.2) {
-        setWarnings(prev => prev + 1);
+        setWarnings((prev) => prev + 1);
 
         if (warnings === 0) {
-          toast.warn('⚠️ Warning #1: Your health factor is below 1.2. Add collateral or repay debt.');
+          toast.warn(
+            "⚠️ Warning #1: Your health factor is below 1.2. Add collateral or repay debt.",
+          );
         } else if (warnings === 1) {
-          toast.error('🚨 Warning #2: Health factor critical! Liquidation imminent.');
+          toast.error(
+            "🚨 Warning #2: Health factor critical! Liquidation imminent.",
+          );
         } else if (warnings === 2) {
-          toast.error('🔴 FINAL WARNING: Add collateral NOW to avoid liquidation!');
+          toast.error(
+            "🔴 FINAL WARNING: Add collateral NOW to avoid liquidation!",
+          );
         }
       }
 
       // Check if liquidated
       if (healthFactor < 1.1) {
-        toast.error('💥 Your position has been liquidated');
+        toast.error("💥 Your position has been liquidated");
         // Trigger liquidation event handling
       }
     }, 15000); // Check every 15 seconds
@@ -1428,13 +1443,13 @@ export function useLiquidationMonitor(userAddress: string) {
 
 ```tsx
 // src/utils/toast.ts
-import { toast as hotToast } from 'react-hot-toast';
+import { toast as hotToast } from "react-hot-toast";
 
 export const toast = {
   success: (msg: string) => hotToast.success(msg, { duration: 4000 }),
   error: (msg: string) => hotToast.error(msg, { duration: 6000 }),
-  info: (msg: string) => hotToast(msg, { icon: 'ℹ️', duration: 4000 }),
-  warn: (msg: string) => hotToast(msg, { icon: '⚠️', duration: 6000 }),
+  info: (msg: string) => hotToast(msg, { icon: "ℹ️", duration: 4000 }),
+  warn: (msg: string) => hotToast(msg, { icon: "⚠️", duration: 6000 }),
 };
 ```
 
@@ -1449,21 +1464,19 @@ export const toast = {
 export function useContractEvents(userAddress: string) {
   useEffect(() => {
     const server = new StellarSdk.SorobanRpc.Server(
-      NETWORK_CONFIG.testnet.rpcUrl
+      NETWORK_CONFIG.testnet.rpcUrl,
     );
 
     // Poll for new events every 5 seconds
     const interval = setInterval(async () => {
       // Get latest transactions for user
       // Parse events and update UI
-
       // Example events to watch:
       // - Stake(user, amountRWA, sharesMinted)
       // - YieldClaimed(user, amount)
       // - Borrowed(user, amountUSDC)
       // - Repaid(user, amountUSDC)
       // - LiquidationTriggered(user, collateralSeized)
-
     }, 5000);
 
     return () => clearInterval(interval);
@@ -1536,8 +1549,8 @@ await stake(BigInt(100_000000000000000000)); // 100 RWA
 // 4. Borrow USDC
 await borrowUSDC(
   BigInt(200_000000000000000000), // 200 stRWA collateral
-  BigInt(100_000000),              // 100 USDC loan
-  12                               // 12 months
+  BigInt(100_000000), // 100 USDC loan
+  12, // 12 months
 );
 // Expected: Receive 100 USDC, health factor = 2.0
 
@@ -1583,14 +1596,18 @@ await repayLoan(BigInt(50_000000)); // 50 USDC
 ## 🆘 Troubleshooting
 
 ### "User not whitelisted"
+
 **Solution:** Run whitelist command:
+
 ```bash
 stellar contract invoke --id $RWA_ID --source admin --network testnet \
   -- allow_user --user $USER_ADDRESS --operator $ADMIN
 ```
 
 ### "Insufficient collateral"
+
 **Solution:** Ensure collateral is at least 140% of loan:
+
 ```typescript
 if (collateralValue / loanAmount < 1.4) {
   // Need more collateral
@@ -1598,14 +1615,18 @@ if (collateralValue / loanAmount < 1.4) {
 ```
 
 ### "Transaction simulation failed"
+
 **Solution:**
+
 1. Check contracts are initialized
 2. Verify token approvals
 3. Check user has sufficient balance
 4. Ensure network RPC is accessible
 
 ### "One loan per user"
+
 **Solution:** Repay existing loan first:
+
 ```typescript
 const existingLoan = await getLoan(userAddress);
 if (existingLoan) {

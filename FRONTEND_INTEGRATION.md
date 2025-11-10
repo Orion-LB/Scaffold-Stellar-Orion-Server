@@ -5,6 +5,7 @@ This guide explains how to deploy the Stellar smart contracts and integrate them
 ## 📋 Prerequisites
 
 1. **Install Stellar CLI (soroban-cli)**
+
    ```bash
    cargo install --locked soroban-cli --features opt
    ```
@@ -40,6 +41,7 @@ stellar contract optimize --wasm target/wasm32-unknown-unknown/release/mock_orac
 Choose your deployment network:
 
 **Testnet (Recommended for Development)**
+
 ```bash
 # Add testnet network
 stellar network add \
@@ -49,6 +51,7 @@ stellar network add \
 ```
 
 **Futurenet**
+
 ```bash
 stellar network add \
   --global futurenet \
@@ -57,6 +60,7 @@ stellar network add \
 ```
 
 **Mainnet (Production)**
+
 ```bash
 stellar network add \
   --global mainnet \
@@ -287,29 +291,29 @@ Create `src/config/contracts.ts`:
 ```typescript
 export const CONTRACT_ADDRESSES = {
   testnet: {
-    usdc: 'CAAAA...', // Replace with actual addresses from deployment
-    rwaToken: 'CBBBB...',
-    stRwaToken: 'CCCCC...',
-    vault: 'CDDDD...',
-    oracle: 'CEEEE...',
-    lendingPool: 'CFFFF...',
+    usdc: "CAAAA...", // Replace with actual addresses from deployment
+    rwaToken: "CBBBB...",
+    stRwaToken: "CCCCC...",
+    vault: "CDDDD...",
+    oracle: "CEEEE...",
+    lendingPool: "CFFFF...",
   },
   mainnet: {
     // Add mainnet addresses when ready
-  }
+  },
 };
 
 export const NETWORK_CONFIG = {
   testnet: {
-    networkPassphrase: 'Test SDF Network ; September 2015',
-    rpcUrl: 'https://soroban-testnet.stellar.org:443',
-    horizonUrl: 'https://horizon-testnet.stellar.org',
+    networkPassphrase: "Test SDF Network ; September 2015",
+    rpcUrl: "https://soroban-testnet.stellar.org:443",
+    horizonUrl: "https://horizon-testnet.stellar.org",
   },
   mainnet: {
-    networkPassphrase: 'Public Global Stellar Network ; September 2015',
-    rpcUrl: 'https://mainnet.sorobanrpc.com:443',
-    horizonUrl: 'https://horizon.stellar.org',
-  }
+    networkPassphrase: "Public Global Stellar Network ; September 2015",
+    rpcUrl: "https://mainnet.sorobanrpc.com:443",
+    horizonUrl: "https://horizon.stellar.org",
+  },
 };
 ```
 
@@ -318,10 +322,10 @@ export const NETWORK_CONFIG = {
 Create `src/lib/stellar.ts`:
 
 ```typescript
-import * as StellarSdk from '@stellar/stellar-sdk';
-import { CONTRACT_ADDRESSES, NETWORK_CONFIG } from '@/config/contracts';
+import * as StellarSdk from "@stellar/stellar-sdk";
+import { CONTRACT_ADDRESSES, NETWORK_CONFIG } from "@/config/contracts";
 
-const network = process.env.NEXT_PUBLIC_STELLAR_NETWORK || 'testnet';
+const network = process.env.NEXT_PUBLIC_STELLAR_NETWORK || "testnet";
 const networkConfig = NETWORK_CONFIG[network];
 const contractAddresses = CONTRACT_ADDRESSES[network];
 
@@ -338,7 +342,7 @@ export async function buildContractTransaction(
   sourceAccount: string,
   contractId: string,
   method: string,
-  args: StellarSdk.xdr.ScVal[]
+  args: StellarSdk.xdr.ScVal[],
 ) {
   const account = await server.getAccount(sourceAccount);
 
@@ -356,8 +360,10 @@ export async function buildContractTransaction(
   const simulated = await server.simulateTransaction(transaction);
 
   if (StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
-    return StellarSdk.SorobanRpc.assembleTransaction(transaction, simulated)
-      .build();
+    return StellarSdk.SorobanRpc.assembleTransaction(
+      transaction,
+      simulated,
+    ).build();
   } else {
     throw new Error(`Simulation failed: ${simulated.error}`);
   }
@@ -366,19 +372,19 @@ export async function buildContractTransaction(
 // Sign and submit transaction
 export async function submitTransaction(
   transaction: StellarSdk.Transaction,
-  signWith: (tx: StellarSdk.Transaction) => Promise<StellarSdk.Transaction>
+  signWith: (tx: StellarSdk.Transaction) => Promise<StellarSdk.Transaction>,
 ) {
   const signedTx = await signWith(transaction);
   const response = await server.sendTransaction(signedTx);
 
   // Poll for result
   let result = await server.getTransaction(response.hash);
-  while (result.status === 'NOT_FOUND') {
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  while (result.status === "NOT_FOUND") {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     result = await server.getTransaction(response.hash);
   }
 
-  if (result.status === 'SUCCESS') {
+  if (result.status === "SUCCESS") {
     return result;
   } else {
     throw new Error(`Transaction failed: ${result.status}`);
@@ -398,14 +404,14 @@ export { contractAddresses };
 Create `src/hooks/useLendingPool.ts`:
 
 ```typescript
-import { useState } from 'react';
-import * as StellarSdk from '@stellar/stellar-sdk';
+import { useState } from "react";
+import * as StellarSdk from "@stellar/stellar-sdk";
 import {
   buildContractTransaction,
   submitTransaction,
   contractAddresses,
-  nativeToScVal
-} from '@/lib/stellar';
+  nativeToScVal,
+} from "@/lib/stellar";
 
 export function useLendingPool() {
   const [loading, setLoading] = useState(false);
@@ -415,22 +421,24 @@ export function useLendingPool() {
   async function depositLiquidity(
     userAddress: string,
     amount: bigint,
-    signTransaction: (tx: StellarSdk.Transaction) => Promise<StellarSdk.Transaction>
+    signTransaction: (
+      tx: StellarSdk.Transaction,
+    ) => Promise<StellarSdk.Transaction>,
   ) {
     setLoading(true);
     setError(null);
 
     try {
       const args = [
-        nativeToScVal(userAddress, 'address'),
-        nativeToScVal(amount, 'i128'),
+        nativeToScVal(userAddress, "address"),
+        nativeToScVal(amount, "i128"),
       ];
 
       const tx = await buildContractTransaction(
         userAddress,
         contractAddresses.lendingPool,
-        'lp_deposit',
-        args
+        "lp_deposit",
+        args,
       );
 
       const result = await submitTransaction(tx, signTransaction);
@@ -449,24 +457,26 @@ export function useLendingPool() {
     collateralAmount: bigint,
     loanAmount: bigint,
     durationMonths: number,
-    signTransaction: (tx: StellarSdk.Transaction) => Promise<StellarSdk.Transaction>
+    signTransaction: (
+      tx: StellarSdk.Transaction,
+    ) => Promise<StellarSdk.Transaction>,
   ) {
     setLoading(true);
     setError(null);
 
     try {
       const args = [
-        nativeToScVal(borrower, 'address'),
-        nativeToScVal(collateralAmount, 'i128'),
-        nativeToScVal(loanAmount, 'i128'),
-        nativeToScVal(durationMonths, 'u32'),
+        nativeToScVal(borrower, "address"),
+        nativeToScVal(collateralAmount, "i128"),
+        nativeToScVal(loanAmount, "i128"),
+        nativeToScVal(durationMonths, "u32"),
       ];
 
       const tx = await buildContractTransaction(
         borrower,
         contractAddresses.lendingPool,
-        'originate_loan',
-        args
+        "originate_loan",
+        args,
       );
 
       const result = await submitTransaction(tx, signTransaction);
@@ -483,22 +493,24 @@ export function useLendingPool() {
   async function repayLoan(
     borrower: string,
     amount: bigint,
-    signTransaction: (tx: StellarSdk.Transaction) => Promise<StellarSdk.Transaction>
+    signTransaction: (
+      tx: StellarSdk.Transaction,
+    ) => Promise<StellarSdk.Transaction>,
   ) {
     setLoading(true);
     setError(null);
 
     try {
       const args = [
-        nativeToScVal(borrower, 'address'),
-        nativeToScVal(amount, 'i128'),
+        nativeToScVal(borrower, "address"),
+        nativeToScVal(amount, "i128"),
       ];
 
       const tx = await buildContractTransaction(
         borrower,
         contractAddresses.lendingPool,
-        'repay_loan',
-        args
+        "repay_loan",
+        args,
       );
 
       const result = await submitTransaction(tx, signTransaction);
@@ -514,13 +526,13 @@ export function useLendingPool() {
   // Get Loan Info (read-only)
   async function getLoan(borrower: string) {
     try {
-      const args = [nativeToScVal(borrower, 'address')];
+      const args = [nativeToScVal(borrower, "address")];
 
       const tx = await buildContractTransaction(
         borrower, // Can be any address for read operations
         contractAddresses.lendingPool,
-        'get_loan',
-        args
+        "get_loan",
+        args,
       );
 
       // For read-only, we only need to simulate
@@ -552,7 +564,7 @@ export function useLendingPool() {
 Create `src/hooks/useWallet.ts`:
 
 ```typescript
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 declare global {
   interface Window {
@@ -566,7 +578,7 @@ export function useWallet() {
 
   async function connect() {
     if (!window.freighter) {
-      alert('Please install Freighter wallet extension');
+      alert("Please install Freighter wallet extension");
       return;
     }
 
@@ -575,26 +587,23 @@ export function useWallet() {
       setPublicKey(key);
       setConnected(true);
     } catch (error) {
-      console.error('Failed to connect wallet:', error);
+      console.error("Failed to connect wallet:", error);
     }
   }
 
   async function signTransaction(tx: any) {
     if (!window.freighter) {
-      throw new Error('Freighter not installed');
+      throw new Error("Freighter not installed");
     }
 
-    const signedTx = await window.freighter.signTransaction(
-      tx.toXDR(),
-      {
-        network: process.env.NEXT_PUBLIC_STELLAR_NETWORK || 'testnet',
-        networkPassphrase: 'Test SDF Network ; September 2015',
-      }
-    );
+    const signedTx = await window.freighter.signTransaction(tx.toXDR(), {
+      network: process.env.NEXT_PUBLIC_STELLAR_NETWORK || "testnet",
+      networkPassphrase: "Test SDF Network ; September 2015",
+    });
 
     return StellarSdk.TransactionBuilder.fromXDR(
       signedTx,
-      'Test SDF Network ; September 2015'
+      "Test SDF Network ; September 2015",
     );
   }
 

@@ -98,7 +98,7 @@ All three layers are now integrated and ready for deployment as a fully function
 
 ```typescript
 // Frontend uses Stellar SDK to call contracts directly
-import * as StellarSdk from '@stellar/stellar-sdk';
+import * as StellarSdk from "@stellar/stellar-sdk";
 
 // Example: Stake RWA tokens
 const vaultContract = new StellarSdk.Contract(VAULT_CONTRACT_ID);
@@ -106,23 +106,25 @@ const transaction = new StellarSdk.TransactionBuilder(account, {
   fee: StellarSdk.BASE_FEE,
   networkPassphrase: NETWORK_PASSPHRASE,
 })
-  .addOperation(vaultContract.call('stake', ...args))
+  .addOperation(vaultContract.call("stake", ...args))
   .build();
 ```
 
 **Key Interactions**:
+
 - **Stake Page** → `RWA_Vault.stake()`, `RWA_Vault.unstake()`, `RWA_Vault.claimYield()`
 - **Borrow Page** → `LendingPool.borrow()`, `LendingPool.repay()`, `LendingPool.depositCollateral()`
 - **Profile Page** → Read balances, loan status, health factor
 
 **Event Listening**:
+
 ```typescript
 // Frontend polls for events
 const eventListener = new EventListener();
 eventListener.start(
   contractId,
-  ['loan_repaid', 'warning_issued', 'loan_liquidated'],
-  (event) => updateUI(event)
+  ["loan_repaid", "warning_issued", "loan_liquidated"],
+  (event) => updateUI(event),
 );
 ```
 
@@ -134,9 +136,9 @@ eventListener.start(
 
 ```typescript
 // Bots use shared contract clients
-import { OracleClient } from '../shared/clients/oracle-client';
-import { LendingPoolClient } from '../shared/clients/lending-pool-client';
-import { VaultClient } from '../shared/clients/vault-client';
+import { OracleClient } from "../shared/clients/oracle-client";
+import { LendingPoolClient } from "../shared/clients/lending-pool-client";
+import { VaultClient } from "../shared/clients/vault-client";
 
 // Oracle Bot submits prices
 const oracleClient = new OracleClient();
@@ -151,14 +153,17 @@ await lendingPoolClient.liquidateLoan(borrowerAddress);
 ```
 
 **Event Monitoring**:
+
 ```typescript
 // Bots monitor contract events
 const events = await server.getEvents({
-  filters: [{
-    type: 'contract',
-    contractIds: [vaultContractId],
-    topics: [['*', 'yield_funded']]
-  }]
+  filters: [
+    {
+      type: "contract",
+      contractIds: [vaultContractId],
+      topics: [["*", "yield_funded"]],
+    },
+  ],
 });
 ```
 
@@ -173,15 +178,16 @@ const events = await server.getEvents({
 // Example: Auto-Repay Bot repays loan → emits loan_repaid event → Frontend updates UI
 
 // Frontend displays bot metrics
-const response = await fetch('http://localhost:9090/metrics/all');
+const response = await fetch("http://localhost:9090/metrics/all");
 const metrics = await response.json();
 // Display: Total repayments, liquidations, bot health
 ```
 
 **Admin Dashboard**:
+
 ```typescript
 // Frontend admin panel queries bot status
-const status = await fetch('http://localhost:9090/status');
+const status = await fetch("http://localhost:9090/status");
 // Shows: Oracle running, Auto-Repay running, Liquidation running
 ```
 
@@ -659,6 +665,7 @@ npm start
 ```
 
 Expected output:
+
 ```
 🚀 Orion RWA Lending - Bot Orchestrator
 
@@ -777,21 +784,21 @@ cat bots/shared/borrowers.json
 
 ### Frontend URLs
 
-| Endpoint | Purpose |
-|----------|---------|
-| `/` | Landing page |
-| `/dashboard` | Main dashboard |
-| `/stake` | Vault staking interface |
-| `/borrow` | Lending interface |
-| `/profile` | User profile & activity |
-| `/admin` | Admin panel (whitelisted only) |
+| Endpoint     | Purpose                        |
+| ------------ | ------------------------------ |
+| `/`          | Landing page                   |
+| `/dashboard` | Main dashboard                 |
+| `/stake`     | Vault staking interface        |
+| `/borrow`    | Lending interface              |
+| `/profile`   | User profile & activity        |
+| `/admin`     | Admin panel (whitelisted only) |
 
 ### Bot Admin APIs
 
-| Bot | Port | Endpoints |
-|-----|------|-----------|
-| **Auto-Repay** | 3001 | `/health`, `/metrics`, `/admin/trigger-repayment`, `/admin/process-all` |
-| **Liquidation** | 3002 | `/health`, `/metrics`, `/loan/:borrower/health`, `/admin/force-check/:borrower` |
+| Bot              | Port | Endpoints                                                                                                            |
+| ---------------- | ---- | -------------------------------------------------------------------------------------------------------------------- |
+| **Auto-Repay**   | 3001 | `/health`, `/metrics`, `/admin/trigger-repayment`, `/admin/process-all`                                              |
+| **Liquidation**  | 3002 | `/health`, `/metrics`, `/loan/:borrower/health`, `/admin/force-check/:borrower`                                      |
 | **Orchestrator** | 9090 | `/health`, `/status`, `/metrics/all`, `/metrics/oracle`, `/metrics/auto-repay`, `/metrics/liquidation`, `/contracts` |
 
 ---
@@ -803,6 +810,7 @@ cat bots/shared/borrowers.json
 **Purpose**: Marketing and entry point
 
 **Content**:
+
 - Hero section with value proposition
 - Features showcase
 - "Launch App" CTA button
@@ -816,6 +824,7 @@ cat bots/shared/borrowers.json
 **Purpose**: Portfolio overview
 
 **Displays**:
+
 - Total Value Locked (your deposits)
 - Active loans summary
 - Health factor gauge
@@ -823,6 +832,7 @@ cat bots/shared/borrowers.json
 - Quick actions (Stake, Borrow, Claim)
 
 **On-chain reads**:
+
 - `balanceOf(user)` for all tokens
 - `RWA_Vault.getClaimableYield(user)`
 - `LendingPool.getLoan(user)`
@@ -835,6 +845,7 @@ cat bots/shared/borrowers.json
 **Purpose**: Vault staking interface
 
 **Features**:
+
 - Vault selector dropdown
 - Amount input (RWA tokens)
 - Preview of stRWA to receive
@@ -842,12 +853,14 @@ cat bots/shared/borrowers.json
 - Stake / Unstake toggle
 
 **On-chain writes**:
+
 - `MockRWA.approve(vault, amount)`
 - `RWA_Vault.stake(amount)`
 - `RWA_Vault.unstake(shares)`
 - `RWA_Vault.claimYield()`
 
 **On-chain reads**:
+
 - `MockRWA.balanceOf(user)`
 - `stRWA.balanceOf(user)`
 - `RWA_Vault.getClaimableYield(user)`
@@ -859,6 +872,7 @@ cat bots/shared/borrowers.json
 **Purpose**: Lending interface
 
 **Features**:
+
 - Asset selector (USDC, XLM)
 - Borrow amount input
 - Collateral selector (stRWA tokens)
@@ -868,17 +882,20 @@ cat bots/shared/borrowers.json
 - Borrow / Repay buttons
 
 **On-chain writes**:
+
 - `LendingPool.depositCollateral(shares)`
 - `LendingPool.borrow(amount)`
 - `LendingPool.repay(amount)`
 
 **On-chain reads**:
+
 - `stRWA.balanceOf(user)`
 - `LendingPool.getLoan(user)`
 - `LendingPool.getHealthFactor(user)`
 - `Oracle.getPrice(stRWA)`
 
 **Auto-Repay Modal**:
+
 - Appears when borrow button clicked
 - Explains auto-repay mechanism
 - User confirms to enable
@@ -890,6 +907,7 @@ cat bots/shared/borrowers.json
 **Purpose**: User account overview
 
 **Displays**:
+
 - Wallet balances (all tokens)
 - Active stakes
 - Active loans with health meters
@@ -898,11 +916,13 @@ cat bots/shared/borrowers.json
 - Claimable yield
 
 **Features**:
+
 - Toggle auto-repay per loan
 - View transaction details
 - Export activity (optional)
 
 **On-chain reads**:
+
 - All balance queries
 - All loan queries
 - Historical events (from indexer or logs)
@@ -914,6 +934,7 @@ cat bots/shared/borrowers.json
 **Purpose**: Administrative controls (demo)
 
 **Features**:
+
 - Set oracle prices manually
 - Trigger liquidations manually
 - Fund liquidity pool
@@ -923,6 +944,7 @@ cat bots/shared/borrowers.json
 **Access**: Restricted to admin wallet address
 
 **On-chain writes** (owner only):
+
 - `Oracle.setPrice(asset, price)`
 - `LendingPool.adminTriggerLiquidation(user)`
 - `LendingPool.adminFundPool(amount)`
@@ -931,17 +953,17 @@ cat bots/shared/borrowers.json
 
 ## 🔔 Event → UI Mapping
 
-| Contract Event | Frontend Action |
-|----------------|-----------------|
-| `Stake(user, amount, shares)` | Update balances, toast "stRWA minted" |
-| `YieldFunded(amount)` | Update claimable yield, info banner "New yield available" |
-| `YieldClaimed(user, amount)` | Update balance, toast "Yield claimed" |
-| `Borrowed(user, amount)` | Update loan display, toast "USDC borrowed" |
-| `Repaid(user, amount)` | Update loan display, toast "Loan repaid" |
-| `AutoRepaid(user, yield, debt)` | Update loan, toast "Debt reduced by $X" |
-| `WarningIssued(user, level, penalty)` | Show warning banner, toast "Warning X/3 issued" |
-| `LoanLiquidated(user, liquidator, collateral)` | Clear loan, toast "Position liquidated" |
-| `PriceUpdated(asset, price)` | Recalculate health factors, update displays |
+| Contract Event                                 | Frontend Action                                           |
+| ---------------------------------------------- | --------------------------------------------------------- |
+| `Stake(user, amount, shares)`                  | Update balances, toast "stRWA minted"                     |
+| `YieldFunded(amount)`                          | Update claimable yield, info banner "New yield available" |
+| `YieldClaimed(user, amount)`                   | Update balance, toast "Yield claimed"                     |
+| `Borrowed(user, amount)`                       | Update loan display, toast "USDC borrowed"                |
+| `Repaid(user, amount)`                         | Update loan display, toast "Loan repaid"                  |
+| `AutoRepaid(user, yield, debt)`                | Update loan, toast "Debt reduced by $X"                   |
+| `WarningIssued(user, level, penalty)`          | Show warning banner, toast "Warning X/3 issued"           |
+| `LoanLiquidated(user, liquidator, collateral)` | Clear loan, toast "Position liquidated"                   |
+| `PriceUpdated(asset, price)`                   | Recalculate health factors, update displays               |
 
 ---
 
@@ -988,6 +1010,7 @@ cat bots/shared/borrowers.json
 ```
 
 Used by:
+
 - ✅ Backend bots (via SharedConfig)
 - ✅ Frontend (copied to src/lib/)
 
@@ -1018,16 +1041,14 @@ LIQUIDATION_PORT=3002
 
 ```json
 {
-  "borrowers": [
-    "GABC123...",
-    "GDEF456..."
-  ],
+  "borrowers": ["GABC123...", "GDEF456..."],
   "last_updated": "2025-11-09T10:30:00Z",
   "version": "1.0.0"
 }
 ```
 
 Shared by:
+
 - ✅ Auto-Repay Bot (finds borrowers to repay)
 - ✅ Liquidation Bot (finds loans to monitor)
 
@@ -1200,6 +1221,7 @@ A **complete, production-ready DeFi lending protocol** for institutional RWA tok
 The **Orion RWA Lending Protocol** is now **fully integrated and ready for deployment**!
 
 **Next Steps**:
+
 1. Deploy contracts to Stellar testnet
 2. Configure environment variables
 3. Start backend bots
@@ -1208,7 +1230,7 @@ The **Orion RWA Lending Protocol** is now **fully integrated and ready for deplo
 
 ---
 
-*Generated: November 9, 2025*
-*Project: Orion RWA Lending Protocol*
-*Status: Complete System Integration* ✅
-*Components: Contracts + Bots + Frontend*
+_Generated: November 9, 2025_
+_Project: Orion RWA Lending Protocol_
+_Status: Complete System Integration_ ✅
+_Components: Contracts + Bots + Frontend_

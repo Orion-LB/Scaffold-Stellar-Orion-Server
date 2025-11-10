@@ -18,6 +18,7 @@ The complete integration layer for connecting smart contracts with backend bots 
 **Location**: `bots/shared/config.ts`
 
 **Features**:
+
 - Centralized contract address management
 - Loads from `contracts/deployed-addresses.json`
 - Validates all contract IDs are set
@@ -25,11 +26,12 @@ The complete integration layer for connecting smart contracts with backend bots 
 - Network configuration management
 
 **Usage**:
+
 ```typescript
-import { SharedConfig } from '../shared/config';
+import { SharedConfig } from "../shared/config";
 
 const config = SharedConfig.getInstance();
-const oracleId = config.getContractId('oracle');
+const oracleId = config.getContractId("oracle");
 const rpcUrl = config.getRpcUrl();
 ```
 
@@ -38,6 +40,7 @@ const rpcUrl = config.getRpcUrl();
 **Location**: `bots/shared/borrower-registry.ts`
 
 **Features**:
+
 - JSON-based borrower tracking
 - Shared between Auto-Repay and Liquidation bots
 - Add/remove borrowers dynamically
@@ -45,6 +48,7 @@ const rpcUrl = config.getRpcUrl();
 - Thread-safe file operations
 
 **Data**: `bots/shared/borrowers.json`
+
 ```json
 {
   "borrowers": ["GABC...", "GDEF..."],
@@ -58,17 +62,20 @@ const rpcUrl = config.getRpcUrl();
 Three production-ready clients for contract interaction:
 
 #### **Oracle Client** (`bots/shared/clients/oracle-client.ts`)
+
 - `getPrice(assetAddress)` - Get current price
 - `isPriceStale(timestamp)` - Check staleness
 - `getPriceWithValidation()` - Get + validate freshness
 
 #### **Lending Pool Client** (`bots/shared/clients/lending-pool-client.ts`)
+
 - `getLoan(borrower)` - Get loan details
 - `repayLoan(borrower, amount)` - Execute repayment
 - `issueWarning(borrower)` - Issue warning
 - `liquidateLoan(borrower)` - Execute liquidation
 
 #### **Vault Client** (`bots/shared/clients/vault-client.ts`)
+
 - `getClaimableYield(depositor)` - Get yield amount
 - `getBalance(depositor)` - Get balance
 - `isBorrower(address)` - Check borrower status
@@ -78,6 +85,7 @@ Three production-ready clients for contract interaction:
 **Location**: `bots/orchestrator/`
 
 **Features**:
+
 - Manages all three bots
 - Starts in correct order (Oracle → Auto-Repay → Liquidation)
 - Unified metrics API on port 9090
@@ -85,6 +93,7 @@ Three production-ready clients for contract interaction:
 - Health monitoring
 
 **Scripts**:
+
 ```bash
 npm install  # Install dependencies
 npm run build  # Build TypeScript
@@ -97,6 +106,7 @@ npm run dev  # Development mode
 **Port**: 9090
 
 **Endpoints**:
+
 ```
 GET /health            - Orchestrator health
 GET /status            - All bot status
@@ -112,6 +122,7 @@ GET /contracts         - Contract addresses (debug)
 **File**: `.env.example`
 
 **Required Variables**:
+
 ```bash
 # Network
 STELLAR_NETWORK=testnet
@@ -220,6 +231,7 @@ stellar contract deploy --wasm target/wasm32-unknown-unknown/release/oracle.wasm
 ```
 
 Result: `contracts/deployed-addresses.json`
+
 ```json
 {
   "network": "testnet",
@@ -295,6 +307,7 @@ npm start
 ```
 
 Output:
+
 ```
 🚀 Orion RWA Lending - Bot Orchestrator
 
@@ -351,6 +364,7 @@ curl http://localhost:9090/contracts
 ```
 
 Expected:
+
 ```json
 {
   "rwa_vault": "CVAULT...",
@@ -369,6 +383,7 @@ curl http://localhost:9090/metrics/oracle
 ```
 
 Expected:
+
 ```json
 {
   "totalUpdates": 5,
@@ -590,6 +605,6 @@ The Orion RWA Lending integration is **complete and ready for deployment**:
 
 ---
 
-*Generated: November 9, 2025*
-*Project: Orion RWA Lending Protocol*
-*Status: Integration Complete* ✅
+_Generated: November 9, 2025_
+_Project: Orion RWA Lending Protocol_
+_Status: Integration Complete_ ✅

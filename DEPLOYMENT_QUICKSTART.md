@@ -44,6 +44,7 @@ Contract addresses will be saved in: `.soroban/contract-addresses-testnet.json`
 ### Option A: Use the TypeScript SDK (Recommended)
 
 1. **Install SDK**
+
    ```bash
    cd frontend-sdk
    npm install
@@ -54,19 +55,26 @@ Contract addresses will be saved in: `.soroban/contract-addresses-testnet.json`
    ```
 
 2. **Use in your app**
+
    ```typescript
-   import StellarLendingSDK from '@your-org/stellar-lending-sdk';
+   import StellarLendingSDK from "@your-org/stellar-lending-sdk";
 
    // Load contract addresses from deployment
-   import addresses from '../.soroban/contract-addresses-testnet.json';
+   import addresses from "../.soroban/contract-addresses-testnet.json";
 
-   const sdk = new StellarLendingSDK('testnet', addresses.contracts);
+   const sdk = new StellarLendingSDK("testnet", addresses.contracts);
 
    // LP deposits USDC
    await sdk.lpDeposit(userAddress, amount, signFunction);
 
    // Borrow USDC
-   await sdk.originateLoan(userAddress, collateral, loanAmount, 12, signFunction);
+   await sdk.originateLoan(
+     userAddress,
+     collateral,
+     loanAmount,
+     12,
+     signFunction,
+   );
    ```
 
    See [frontend-sdk/README.md](frontend-sdk/README.md) for full API docs.
@@ -110,7 +118,9 @@ console.log('Your loan:', loan);
 ## Quick Reference
 
 ### Contract Addresses
+
 After deployment, find in `.soroban/contract-addresses-testnet.json`:
+
 ```json
 {
   "contracts": {
@@ -125,6 +135,7 @@ After deployment, find in `.soroban/contract-addresses-testnet.json`:
 ```
 
 ### Key Amounts & Decimals
+
 ```typescript
 // USDC (6 decimals)
 const usdc_100 = BigInt(100_000000);
@@ -134,10 +145,12 @@ const rwa_100 = BigInt(100_000000000000000000);
 ```
 
 ### Interest Rates (Auto-Calculated)
+
 - **High Risk Token** (yield < 5%): 14% APR, 20% to LPs
 - **Low Risk Token** (yield ≥ 5%): 7% APR, 10% to LPs
 
 ### Collateral Requirements
+
 - **Loan-to-Value**: 140% (need $140 collateral for $100 loan)
 - **Warning**: 110% ratio or 2 weeks no payment
 - **Liquidation**: 110% ratio
@@ -145,31 +158,32 @@ const rwa_100 = BigInt(100_000000000000000000);
 ## Wallet Integration Examples
 
 ### Freighter Wallet
+
 ```typescript
 async function signWithFreighter(tx) {
-  const signedTxXDR = await window.freighter.signTransaction(
-    tx.toXDR(),
-    { network: 'testnet' }
-  );
+  const signedTxXDR = await window.freighter.signTransaction(tx.toXDR(), {
+    network: "testnet",
+  });
   return StellarSdk.TransactionBuilder.fromXDR(
     signedTxXDR,
-    'Test SDF Network ; September 2015'
+    "Test SDF Network ; September 2015",
   );
 }
 ```
 
 ### Albedo Wallet
+
 ```typescript
-import albedo from '@albedo-link/intent';
+import albedo from "@albedo-link/intent";
 
 async function signWithAlbedo(tx) {
   const result = await albedo.tx({
     xdr: tx.toXDR(),
-    network: 'testnet',
+    network: "testnet",
   });
   return StellarSdk.TransactionBuilder.fromXDR(
     result.signed_envelope_xdr,
-    'Test SDF Network ; September 2015'
+    "Test SDF Network ; September 2015",
   );
 }
 ```
@@ -177,22 +191,28 @@ async function signWithAlbedo(tx) {
 ## Common Issues & Solutions
 
 ### ❌ "Insufficient balance"
+
 **Solution**: Fund testnet account: `stellar keys fund admin --network testnet`
 
 ### ❌ "Transaction simulation failed"
+
 **Solution**:
+
 1. Check contract is initialized: `./scripts/initialize.sh testnet`
 2. Verify token approvals before transfers
 3. Check collateral ratio for loans (need 140%)
 
 ### ❌ "User not whitelisted" (RWA token)
+
 **Solution**: Whitelist user address:
+
 ```bash
 stellar contract invoke --id $RWA_ID --source admin --network testnet \
   -- allow_user --user $USER_ADDRESS --operator $ADMIN
 ```
 
 ### ❌ "One loan per user"
+
 **Solution**: Repay existing loan before taking new one
 
 ## Production Deployment
@@ -222,6 +242,7 @@ When ready for mainnet:
 ## Support
 
 For issues or questions:
+
 1. Check [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md) for detailed docs
 2. Review contract tests for usage examples
 3. Check Stellar Discord/Forum for Soroban help

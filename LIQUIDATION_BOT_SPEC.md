@@ -54,6 +54,7 @@ The Liquidation Bot is a critical risk management component that continuously mo
 **Feature**: Calculate real-time health factor for all loans
 
 **Formula**:
+
 ```
 Health Factor = Collateral Value / Total Debt
 
@@ -63,16 +64,17 @@ Where:
 ```
 
 **Implementation**:
+
 ```typescript
 interface HealthFactor {
   borrower: string;
-  collateralAmount: bigint;      // stRWA tokens
-  collateralValue: bigint;        // USDC value
-  outstandingDebt: bigint;        // USDC
-  penalties: bigint;              // USDC
-  totalDebt: bigint;              // outstanding + penalties
-  healthFactor: number;           // Decimal (1.5 = 150%)
-  price: bigint;                  // stRWA price in USDC
+  collateralAmount: bigint; // stRWA tokens
+  collateralValue: bigint; // USDC value
+  outstandingDebt: bigint; // USDC
+  penalties: bigint; // USDC
+  totalDebt: bigint; // outstanding + penalties
+  healthFactor: number; // Decimal (1.5 = 150%)
+  price: bigint; // stRWA price in USDC
   isHealthy: boolean;
   needsWarning: boolean;
   needsLiquidation: boolean;
@@ -82,14 +84,15 @@ class HealthCalculator {
   async calculateHealth(
     borrower: string,
     loan: Loan,
-    price: bigint
+    price: bigint,
   ): Promise<HealthFactor> {
     // Price has 6 decimals (USDC)
     // Collateral has 18 decimals (stRWA)
     // Need to normalize to same decimals
 
     // Collateral value in USDC (6 decimals)
-    const collateralValue = (loan.collateralAmount * price) / 1_000_000_000_000_000_000n;
+    const collateralValue =
+      (loan.collateralAmount * price) / 1_000_000_000_000_000_000n;
 
     // Total debt
     const totalDebt = loan.outstandingDebt + loan.penalties;
@@ -98,7 +101,7 @@ class HealthCalculator {
     let healthFactor = 0;
     if (totalDebt > 0n) {
       // Convert to decimal with 2 decimal places
-      healthFactor = Number(collateralValue * 100n / totalDebt) / 100;
+      healthFactor = Number((collateralValue * 100n) / totalDebt) / 100;
     } else {
       healthFactor = Infinity; // No debt = infinite health
     }
@@ -121,6 +124,7 @@ class HealthCalculator {
 ```
 
 **Edge Cases**:
+
 ```typescript
 // Handle division by zero
 if (totalDebt === 0n) {
@@ -136,7 +140,7 @@ if (totalDebt < MIN_DEBT) {
 // Handle price staleness
 const now = Date.now() / 1000;
 if (now - priceTimestamp > 24 * 3600) {
-  throw new Error('Oracle price is stale, cannot calculate health');
+  throw new Error("Oracle price is stale, cannot calculate health");
 }
 ```
 
@@ -145,15 +149,16 @@ if (now - priceTimestamp > 24 * 3600) {
 **Feature**: 3-warning system before liquidation
 
 **Warning Thresholds**:
+
 ```typescript
 interface WarningConfig {
-  warning1Threshold: number;      // 1.5 (150% health)
-  warning2Threshold: number;      // 1.2 (120% health)
-  warning3Threshold: number;      // 1.1 (110% health) - final warning
-  liquidationThreshold: number;   // 1.1 (110% health)
+  warning1Threshold: number; // 1.5 (150% health)
+  warning2Threshold: number; // 1.2 (120% health)
+  warning3Threshold: number; // 1.1 (110% health) - final warning
+  liquidationThreshold: number; // 1.1 (110% health)
 
-  timeBetweenWarnings: number;    // 2 weeks (1,209,600 seconds)
-  penaltyPercent: number;         // 2% of outstanding debt
+  timeBetweenWarnings: number; // 2 weeks (1,209,600 seconds)
+  penaltyPercent: number; // 2% of outstanding debt
 }
 
 const WARNING_CONFIG: WarningConfig = {
@@ -167,20 +172,21 @@ const WARNING_CONFIG: WarningConfig = {
 ```
 
 **Warning State Machine**:
+
 ```typescript
 enum WarningState {
-  HEALTHY = 'HEALTHY',           // Health >= 1.5, no warnings
-  WARNING_1 = 'WARNING_1',       // Health < 1.5 or 2 weeks no payment
-  WARNING_2 = 'WARNING_2',       // Health < 1.2 or 4 weeks no payment
-  WARNING_3 = 'WARNING_3',       // Health < 1.1 - FINAL WARNING
-  LIQUIDATABLE = 'LIQUIDATABLE', // Health <= 1.1
+  HEALTHY = "HEALTHY", // Health >= 1.5, no warnings
+  WARNING_1 = "WARNING_1", // Health < 1.5 or 2 weeks no payment
+  WARNING_2 = "WARNING_2", // Health < 1.2 or 4 weeks no payment
+  WARNING_3 = "WARNING_3", // Health < 1.1 - FINAL WARNING
+  LIQUIDATABLE = "LIQUIDATABLE", // Health <= 1.1
 }
 
 class WarningManager {
   determineWarningState(
     health: HealthFactor,
     loan: Loan,
-    currentTime: number
+    currentTime: number,
   ): WarningState {
     const timeSinceLastPayment = currentTime - loan.lastPaymentTime;
     const twoWeeks = WARNING_CONFIG.timeBetweenWarnings;
@@ -218,7 +224,7 @@ class WarningManager {
   shouldIssueWarning(
     currentState: WarningState,
     loan: Loan,
-    currentTime: number
+    currentTime: number,
   ): boolean {
     // Already issued max warnings
     if (loan.warningsIssued >= 3) {
@@ -256,6 +262,7 @@ class WarningManager {
 **Feature**: Issue warnings on-chain via contract call
 
 **Contract Interaction**:
+
 ```rust
 // In Lending Pool contract
 pub fn check_and_issue_warning(
@@ -295,15 +302,14 @@ pub fn check_and_issue_warning(
 ```
 
 **Bot Implementation**:
+
 ```typescript
 class WarningExecutor {
   async issueWarning(borrower: string): Promise<string> {
     const botAddress = this.keypair.publicKey();
 
     // Build transaction
-    const args = [
-      StellarSdk.nativeToScVal(borrower, { type: 'address' }),
-    ];
+    const args = [StellarSdk.nativeToScVal(borrower, { type: "address" })];
 
     const account = await this.server.getAccount(botAddress);
     const contract = new StellarSdk.Contract(this.lendingPoolId);
@@ -312,7 +318,7 @@ class WarningExecutor {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.networkPassphrase,
     })
-      .addOperation(contract.call('check_and_issue_warning', ...args))
+      .addOperation(contract.call("check_and_issue_warning", ...args))
       .setTimeout(30)
       .build();
 
@@ -326,7 +332,7 @@ class WarningExecutor {
     // Assemble
     transaction = StellarSdk.SorobanRpc.assembleTransaction(
       transaction,
-      simulated
+      simulated,
     ).build();
 
     // Sign
@@ -339,13 +345,13 @@ class WarningExecutor {
     let result = await this.server.getTransaction(response.hash);
     let attempts = 0;
 
-    while (result.status === 'NOT_FOUND' && attempts < 20) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    while (result.status === "NOT_FOUND" && attempts < 20) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       result = await this.server.getTransaction(response.hash);
       attempts++;
     }
 
-    if (result.status !== 'SUCCESS') {
+    if (result.status !== "SUCCESS") {
       throw new Error(`Warning transaction failed`);
     }
 
@@ -359,6 +365,7 @@ class WarningExecutor {
 **Feature**: Execute liquidations at 110% threshold
 
 **Contract Interaction**:
+
 ```rust
 // In Lending Pool contract
 pub fn liquidate_loan(
@@ -417,6 +424,7 @@ pub fn liquidate_loan(
 ```
 
 **Bot Implementation**:
+
 ```typescript
 class LiquidationExecutor {
   async liquidateLoan(borrower: string): Promise<LiquidationResult> {
@@ -424,8 +432,8 @@ class LiquidationExecutor {
 
     // Build transaction
     const args = [
-      StellarSdk.nativeToScVal(botAddress, { type: 'address' }),
-      StellarSdk.nativeToScVal(borrower, { type: 'address' }),
+      StellarSdk.nativeToScVal(botAddress, { type: "address" }),
+      StellarSdk.nativeToScVal(borrower, { type: "address" }),
     ];
 
     const account = await this.server.getAccount(botAddress);
@@ -435,7 +443,7 @@ class LiquidationExecutor {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.networkPassphrase,
     })
-      .addOperation(contract.call('liquidate_loan', ...args))
+      .addOperation(contract.call("liquidate_loan", ...args))
       .setTimeout(30)
       .build();
 
@@ -452,7 +460,7 @@ class LiquidationExecutor {
     // Assemble
     transaction = StellarSdk.SorobanRpc.assembleTransaction(
       transaction,
-      simulated
+      simulated,
     ).build();
 
     // Sign
@@ -465,13 +473,13 @@ class LiquidationExecutor {
     let result = await this.server.getTransaction(response.hash);
     let attempts = 0;
 
-    while (result.status === 'NOT_FOUND' && attempts < 20) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    while (result.status === "NOT_FOUND" && attempts < 20) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       result = await this.server.getTransaction(response.hash);
       attempts++;
     }
 
-    if (result.status !== 'SUCCESS') {
+    if (result.status !== "SUCCESS") {
       throw new Error(`Liquidation transaction failed`);
     }
 
@@ -501,13 +509,14 @@ class LiquidationExecutor {
 **Solutions**:
 
 **Option A: Shared Registry** (Recommended for hackathon)
+
 ```typescript
 // Share borrowers.json with Auto-Repay Bot
 class BorrowerRegistry {
   private borrowers: string[] = [];
 
-  constructor(registryPath: string = './borrowers.json') {
-    this.borrowers = JSON.parse(fs.readFileSync(registryPath, 'utf-8'));
+  constructor(registryPath: string = "./borrowers.json") {
+    this.borrowers = JSON.parse(fs.readFileSync(registryPath, "utf-8"));
   }
 
   async getActiveBorrowers(): Promise<string[]> {
@@ -527,25 +536,26 @@ class BorrowerRegistry {
 ```
 
 **Option B: Event-Based Tracking**
+
 ```typescript
 class LoanEventTracker {
   private activeBorrowers: Set<string> = new Set();
 
   async trackFromEvents(): Promise<void> {
     // Track loan originations
-    const originationEvents = await this.getEvents('loan_originated');
+    const originationEvents = await this.getEvents("loan_originated");
     for (const event of originationEvents) {
       this.activeBorrowers.add(event.borrower);
     }
 
     // Remove closed loans
-    const closedEvents = await this.getEvents('loan_closed');
+    const closedEvents = await this.getEvents("loan_closed");
     for (const event of closedEvents) {
       this.activeBorrowers.delete(event.borrower);
     }
 
     // Remove liquidated loans
-    const liquidatedEvents = await this.getEvents('loan_liquidated');
+    const liquidatedEvents = await this.getEvents("loan_liquidated");
     for (const event of liquidatedEvents) {
       this.activeBorrowers.delete(event.borrower);
     }
@@ -562,12 +572,13 @@ class LoanEventTracker {
 **Feature**: Continuous health monitoring with configurable frequency
 
 **Implementation**:
+
 ```typescript
 class LiquidationBot {
   private monitoringInterval: NodeJS.Timeout | null = null;
 
   async start(): Promise<void> {
-    this.logger.info('Starting Liquidation Bot...');
+    this.logger.info("Starting Liquidation Bot...");
 
     // Load borrowers
     await this.borrowerRegistry.load();
@@ -578,7 +589,7 @@ class LiquidationBot {
     // Start health monitoring
     this.startHealthCheck();
 
-    this.logger.info('Liquidation Bot started successfully');
+    this.logger.info("Liquidation Bot started successfully");
   }
 
   private startMonitoringLoop(): void {
@@ -598,7 +609,7 @@ class LiquidationBot {
       // 1. Get active borrowers
       const borrowers = await this.borrowerRegistry.getActiveBorrowers();
 
-      this.logger.info('Monitoring loans', { count: borrowers.length });
+      this.logger.info("Monitoring loans", { count: borrowers.length });
 
       // 2. Get current oracle price
       const price = await this.oracle.getPrice(this.stRwaTokenAddress);
@@ -611,7 +622,7 @@ class LiquidationBot {
           const result = await this.monitorLoan(borrower, price);
           results.push(result);
         } catch (error: any) {
-          this.logger.error('Failed to monitor loan', {
+          this.logger.error("Failed to monitor loan", {
             borrower,
             error: error.message,
           });
@@ -629,21 +640,20 @@ class LiquidationBot {
 
       this.metrics.recordMonitoringCycle({
         borrowersChecked: borrowers.length,
-        warningsIssued: results.filter(r => r.warningIssued).length,
-        liquidationsExecuted: results.filter(r => r.liquidated).length,
-        errors: results.filter(r => !r.success).length,
+        warningsIssued: results.filter((r) => r.warningIssued).length,
+        liquidationsExecuted: results.filter((r) => r.liquidated).length,
+        errors: results.filter((r) => !r.success).length,
         processingTime,
       });
 
-      this.logger.info('Monitoring cycle completed', {
+      this.logger.info("Monitoring cycle completed", {
         borrowers: borrowers.length,
-        warnings: results.filter(r => r.warningIssued).length,
-        liquidations: results.filter(r => r.liquidated).length,
+        warnings: results.filter((r) => r.warningIssued).length,
+        liquidations: results.filter((r) => r.liquidated).length,
         time: processingTime,
       });
-
     } catch (error: any) {
-      this.logger.error('Monitoring cycle failed', {
+      this.logger.error("Monitoring cycle failed", {
         error: error.message,
       });
     }
@@ -651,7 +661,7 @@ class LiquidationBot {
 
   private async monitorLoan(
     borrower: string,
-    price: bigint
+    price: bigint,
   ): Promise<MonitoringResult> {
     // 1. Get loan
     const loan = await this.lendingPool.getLoan(borrower);
@@ -669,19 +679,18 @@ class LiquidationBot {
     const health = await this.healthCalculator.calculateHealth(
       borrower,
       loan,
-      price
+      price,
     );
 
     // 3. Check if liquidation needed
     if (health.needsLiquidation) {
-      this.logger.warn('Loan needs liquidation', {
+      this.logger.warn("Loan needs liquidation", {
         borrower,
         healthFactor: health.healthFactor,
       });
 
-      const liquidationResult = await this.liquidationExecutor.liquidateLoan(
-        borrower
-      );
+      const liquidationResult =
+        await this.liquidationExecutor.liquidateLoan(borrower);
 
       return {
         borrower,
@@ -699,11 +708,13 @@ class LiquidationBot {
     const warningState = this.warningManager.determineWarningState(
       health,
       loan,
-      currentTime
+      currentTime,
     );
 
-    if (this.warningManager.shouldIssueWarning(warningState, loan, currentTime)) {
-      this.logger.warn('Issuing warning', {
+    if (
+      this.warningManager.shouldIssueWarning(warningState, loan, currentTime)
+    ) {
+      this.logger.warn("Issuing warning", {
         borrower,
         warningState,
         healthFactor: health.healthFactor,
@@ -732,14 +743,14 @@ class LiquidationBot {
   }
 
   async stop(): Promise<void> {
-    this.logger.info('Stopping Liquidation Bot...');
+    this.logger.info("Stopping Liquidation Bot...");
 
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
       this.monitoringInterval = null;
     }
 
-    this.logger.info('Liquidation Bot stopped');
+    this.logger.info("Liquidation Bot stopped");
   }
 }
 ```
@@ -749,6 +760,7 @@ class LiquidationBot {
 **Feature**: Notify borrowers of warnings and liquidations
 
 **On-Chain Events** (Primary for hackathon):
+
 ```rust
 // Contract emits events
 env.events().publish((
@@ -769,6 +781,7 @@ env.events().publish((
 ```
 
 **Frontend Integration**:
+
 ```typescript
 // Frontend listens to contract events
 class NotificationService {
@@ -777,9 +790,9 @@ class NotificationService {
     const events = await this.server.getEvents({
       filters: [
         {
-          type: 'contract',
+          type: "contract",
           contractIds: [this.lendingPoolId],
-          topics: [['*', 'warning_issued']],
+          topics: [["*", "warning_issued"]],
         },
       ],
     });
@@ -793,14 +806,14 @@ class NotificationService {
 
   private displayWarning(event: any): void {
     const notification = {
-      type: 'warning',
+      type: "warning",
       severity: this.getWarningSeverity(event.warningsIssued),
       title: `Warning ${event.warningsIssued}/3 Issued`,
       message: `Your loan health is low. Penalty: ${event.penalty} USDC`,
       healthFactor: event.healthFactor,
       actions: [
-        { label: 'Add Collateral', action: 'addCollateral' },
-        { label: 'Repay Debt', action: 'repayDebt' },
+        { label: "Add Collateral", action: "addCollateral" },
+        { label: "Repay Debt", action: "repayDebt" },
       ],
     };
 
@@ -811,19 +824,20 @@ class NotificationService {
   private getWarningSeverity(warningCount: number): string {
     switch (warningCount) {
       case 1:
-        return 'info';
+        return "info";
       case 2:
-        return 'warning';
+        return "warning";
       case 3:
-        return 'critical';
+        return "critical";
       default:
-        return 'info';
+        return "info";
     }
   }
 }
 ```
 
 **Off-Chain Notifications** (Optional, for production):
+
 ```typescript
 class OffChainNotifier {
   async sendEmail(borrower: string, warning: WarningEvent): Promise<void> {
@@ -851,7 +865,7 @@ class OffChainNotifier {
 
   async sendPushNotification(
     borrower: string,
-    notification: Notification
+    notification: Notification,
   ): Promise<void> {
     // Use Firebase Cloud Messaging or similar
     await this.pushService.send({
@@ -869,18 +883,19 @@ class OffChainNotifier {
 **Feature**: Ensure bot operation is economically viable
 
 **Reward Calculation**:
+
 ```typescript
 interface LiquidationEconomics {
-  collateralValue: bigint;        // USDC value of collateral
-  liquidatorReward: bigint;       // 10% of collateral value
-  gasCost: bigint;                // Estimated gas cost
-  profit: bigint;                 // Reward - gas
+  collateralValue: bigint; // USDC value of collateral
+  liquidatorReward: bigint; // 10% of collateral value
+  gasCost: bigint; // Estimated gas cost
+  profit: bigint; // Reward - gas
   isProfitable: boolean;
 }
 
 class EconomicsCalculator {
   async analyzeLiquidation(
-    health: HealthFactor
+    health: HealthFactor,
   ): Promise<LiquidationEconomics> {
     // Calculate reward (10% of collateral value)
     const liquidatorReward = (health.collateralValue * 10n) / 100n;
@@ -912,6 +927,7 @@ class EconomicsCalculator {
 ```
 
 **Gas Optimization**:
+
 ```typescript
 class GasOptimizer {
   async estimateGasCost(borrower: string): Promise<bigint> {
@@ -924,7 +940,7 @@ class GasOptimizer {
     if (StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
       // Extract gas cost from simulation
       // Stellar uses resource fees, not traditional gas
-      const resourceFee = simulated.minResourceFee || '0';
+      const resourceFee = simulated.minResourceFee || "0";
       return BigInt(resourceFee);
     }
 
@@ -934,7 +950,7 @@ class GasOptimizer {
 
   async shouldDelayLiquidation(
     economics: LiquidationEconomics,
-    health: HealthFactor
+    health: HealthFactor,
   ): Promise<boolean> {
     // If health is very close to threshold, might wait for it to worsen
     // More collateral = more reward
@@ -956,12 +972,13 @@ class GasOptimizer {
 **Feature**: Track bot performance and profitability
 
 **Metrics**:
+
 ```typescript
 interface LiquidationMetrics {
   // Monitoring stats
   totalCycles: number;
   borrowersChecked: number;
-  averageCheckTime: number;          // ms per borrower
+  averageCheckTime: number; // ms per borrower
 
   // Warning stats
   totalWarningsIssued: number;
@@ -975,9 +992,9 @@ interface LiquidationMetrics {
   failedLiquidations: number;
 
   // Financial stats
-  totalRewardsEarned: bigint;        // USDC
-  totalGasSpent: bigint;             // USDC equivalent
-  totalProfit: bigint;               // Rewards - Gas
+  totalRewardsEarned: bigint; // USDC
+  totalGasSpent: bigint; // USDC equivalent
+  totalProfit: bigint; // Rewards - Gas
   averageRewardPerLiquidation: bigint;
 
   // Health stats
@@ -1008,7 +1025,7 @@ class MetricsCollector {
     averageRewardPerLiquidation: 0n,
     averageHealthFactor: 0,
     lowestHealthFactor: Infinity,
-    lowestHealthBorrower: '',
+    lowestHealthBorrower: "",
     lastCycleTime: 0,
     cyclesPerHour: 0,
   };
@@ -1045,11 +1062,7 @@ class MetricsCollector {
     }
   }
 
-  recordLiquidation(
-    success: boolean,
-    reward: bigint,
-    gasCost: bigint
-  ): void {
+  recordLiquidation(success: boolean, reward: bigint, gasCost: bigint): void {
     this.metrics.totalLiquidations++;
 
     if (success) {
@@ -1086,9 +1099,7 @@ class MetricsCollector {
 
     if (staleness > 60) {
       // 1 minute
-      console.warn(
-        `⚠️ Liquidation bot hasn't run in ${staleness}s`
-      );
+      console.warn(`⚠️ Liquidation bot hasn't run in ${staleness}s`);
     }
 
     // Check success rate
@@ -1099,18 +1110,17 @@ class MetricsCollector {
     if (successRate < 0.95) {
       // 95% threshold
       console.warn(
-        `⚠️ Liquidation success rate low: ${(successRate * 100).toFixed(1)}%`
+        `⚠️ Liquidation success rate low: ${(successRate * 100).toFixed(1)}%`,
       );
     }
 
     // Check profitability
     if (this.metrics.totalLiquidations > 0) {
       const averageProfit =
-        this.metrics.totalProfit /
-        BigInt(this.metrics.successfulLiquidations);
+        this.metrics.totalProfit / BigInt(this.metrics.successfulLiquidations);
 
       if (averageProfit < 0n) {
-        console.error('❌ Bot is losing money on liquidations!');
+        console.error("❌ Bot is losing money on liquidations!");
       }
     }
   }
@@ -1167,17 +1177,17 @@ bots/
 
 ```typescript
 // src/bot.ts
-import { Logger } from './monitoring/logger';
-import { MetricsCollector } from './monitoring/metrics';
-import { HealthCalculator } from './calculator/health';
-import { EconomicsCalculator } from './calculator/economics';
-import { WarningManager } from './manager/warning';
-import { BorrowerRegistry } from './manager/borrowers';
-import { WarningExecutor } from './executor/warning';
-import { LiquidationExecutor } from './executor/liquidation';
-import { OracleClient } from './clients/oracle';
-import { LendingPoolClient } from './clients/lending-pool';
-import { NetworkConfig } from './config/network';
+import { Logger } from "./monitoring/logger";
+import { MetricsCollector } from "./monitoring/metrics";
+import { HealthCalculator } from "./calculator/health";
+import { EconomicsCalculator } from "./calculator/economics";
+import { WarningManager } from "./manager/warning";
+import { BorrowerRegistry } from "./manager/borrowers";
+import { WarningExecutor } from "./executor/warning";
+import { LiquidationExecutor } from "./executor/liquidation";
+import { OracleClient } from "./clients/oracle";
+import { LendingPoolClient } from "./clients/lending-pool";
+import { NetworkConfig } from "./config/network";
 
 export class LiquidationBot {
   private logger: Logger;
@@ -1193,7 +1203,7 @@ export class LiquidationBot {
   private monitoringInterval: NodeJS.Timeout | null = null;
 
   constructor(private config: NetworkConfig) {
-    this.logger = new Logger('LiquidationBot');
+    this.logger = new Logger("LiquidationBot");
     this.metrics = new MetricsCollector();
     this.healthCalculator = new HealthCalculator();
     this.economicsCalculator = new EconomicsCalculator();
@@ -1206,7 +1216,7 @@ export class LiquidationBot {
   }
 
   async start(): Promise<void> {
-    this.logger.info('Starting Liquidation Bot...');
+    this.logger.info("Starting Liquidation Bot...");
 
     // Load borrowers
     await this.borrowerRegistry.load();
@@ -1217,7 +1227,7 @@ export class LiquidationBot {
     // Start health monitoring
     this.startHealthCheck();
 
-    this.logger.info('Liquidation Bot started successfully');
+    this.logger.info("Liquidation Bot started successfully");
   }
 
   private startMonitoringLoop(): void {
@@ -1236,17 +1246,17 @@ export class LiquidationBot {
       // 1. Get active borrowers
       const borrowers = await this.borrowerRegistry.getActiveBorrowers();
 
-      this.logger.info('Monitoring loans', { count: borrowers.length });
+      this.logger.info("Monitoring loans", { count: borrowers.length });
 
       // 2. Get current oracle price
       const [price, priceTimestamp] = await this.oracle.getPrice(
-        this.config.stRwaTokenAddress
+        this.config.stRwaTokenAddress,
       );
 
       // Check price freshness
       const now = Date.now() / 1000;
       if (now - priceTimestamp > 24 * 3600) {
-        this.logger.error('Oracle price is stale, skipping cycle');
+        this.logger.error("Oracle price is stale, skipping cycle");
         return;
       }
 
@@ -1258,7 +1268,7 @@ export class LiquidationBot {
           const result = await this.monitorLoan(borrower, price);
           results.push(result);
         } catch (error: any) {
-          this.logger.error('Failed to monitor loan', {
+          this.logger.error("Failed to monitor loan", {
             borrower,
             error: error.message,
           });
@@ -1276,22 +1286,21 @@ export class LiquidationBot {
 
       this.metrics.recordMonitoringCycle({
         borrowersChecked: borrowers.length,
-        warningsIssued: results.filter(r => r.warningIssued).length,
-        liquidationsExecuted: results.filter(r => r.liquidated).length,
-        errors: results.filter(r => !r.success).length,
+        warningsIssued: results.filter((r) => r.warningIssued).length,
+        liquidationsExecuted: results.filter((r) => r.liquidated).length,
+        errors: results.filter((r) => !r.success).length,
         processingTime,
       });
 
       // 5. Log summary
-      this.logger.info('Monitoring cycle completed', {
+      this.logger.info("Monitoring cycle completed", {
         borrowers: borrowers.length,
-        warnings: results.filter(r => r.warningIssued).length,
-        liquidations: results.filter(r => r.liquidated).length,
+        warnings: results.filter((r) => r.warningIssued).length,
+        liquidations: results.filter((r) => r.liquidated).length,
         time: processingTime,
       });
-
     } catch (error: any) {
-      this.logger.error('Monitoring cycle failed', {
+      this.logger.error("Monitoring cycle failed", {
         error: error.message,
       });
     }
@@ -1299,7 +1308,7 @@ export class LiquidationBot {
 
   private async monitorLoan(
     borrower: string,
-    price: bigint
+    price: bigint,
   ): Promise<MonitoringResult> {
     // 1. Get loan
     const loan = await this.lendingPool.getLoan(borrower);
@@ -1317,7 +1326,7 @@ export class LiquidationBot {
     const health = await this.healthCalculator.calculateHealth(
       borrower,
       loan,
-      price
+      price,
     );
 
     // Record health factor
@@ -1326,12 +1335,11 @@ export class LiquidationBot {
     // 3. Check if liquidation needed
     if (health.needsLiquidation) {
       // Check economics
-      const economics = await this.economicsCalculator.analyzeLiquidation(
-        health
-      );
+      const economics =
+        await this.economicsCalculator.analyzeLiquidation(health);
 
       if (!economics.isProfitable) {
-        this.logger.warn('Liquidation not profitable, skipping', {
+        this.logger.warn("Liquidation not profitable, skipping", {
           borrower,
           reward: economics.liquidatorReward.toString(),
           gasCost: economics.gasCost.toString(),
@@ -1346,21 +1354,20 @@ export class LiquidationBot {
         };
       }
 
-      this.logger.warn('Executing liquidation', {
+      this.logger.warn("Executing liquidation", {
         borrower,
         healthFactor: health.healthFactor,
         reward: economics.liquidatorReward.toString(),
         profit: economics.profit.toString(),
       });
 
-      const liquidationResult = await this.liquidationExecutor.liquidateLoan(
-        borrower
-      );
+      const liquidationResult =
+        await this.liquidationExecutor.liquidateLoan(borrower);
 
       this.metrics.recordLiquidation(
         liquidationResult.success,
         liquidationResult.reward,
-        economics.gasCost
+        economics.gasCost,
       );
 
       return {
@@ -1379,13 +1386,13 @@ export class LiquidationBot {
     const warningState = this.warningManager.determineWarningState(
       health,
       loan,
-      currentTime
+      currentTime,
     );
 
     if (
       this.warningManager.shouldIssueWarning(warningState, loan, currentTime)
     ) {
-      this.logger.warn('Issuing warning', {
+      this.logger.warn("Issuing warning", {
         borrower,
         warningState,
         healthFactor: health.healthFactor,
@@ -1423,14 +1430,14 @@ export class LiquidationBot {
   }
 
   async stop(): Promise<void> {
-    this.logger.info('Stopping Liquidation Bot...');
+    this.logger.info("Stopping Liquidation Bot...");
 
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
       this.monitoringInterval = null;
     }
 
-    this.logger.info('Liquidation Bot stopped');
+    this.logger.info("Liquidation Bot stopped");
   }
 }
 ```
@@ -1440,48 +1447,49 @@ export class LiquidationBot {
 ### Unit Tests
 
 **1. Health Calculator Tests**
+
 ```typescript
 // tests/unit/health.test.ts
-describe('HealthCalculator', () => {
+describe("HealthCalculator", () => {
   let calculator: HealthCalculator;
 
   beforeEach(() => {
     calculator = new HealthCalculator();
   });
 
-  it('should calculate health factor correctly', async () => {
+  it("should calculate health factor correctly", async () => {
     const loan = {
       collateralAmount: 200_000000000000000000n, // 200 stRWA
-      outstandingDebt: 100_000000n,              // 100 USDC
+      outstandingDebt: 100_000000n, // 100 USDC
       penalties: 0n,
     };
 
     const price = 1_000000n; // 1 USDC per stRWA
 
-    const health = await calculator.calculateHealth('GABC...', loan, price);
+    const health = await calculator.calculateHealth("GABC...", loan, price);
 
     expect(health.healthFactor).toBe(2.0); // 200 / 100 = 2.0
     expect(health.isHealthy).toBe(true);
     expect(health.needsLiquidation).toBe(false);
   });
 
-  it('should identify unhealthy loan', async () => {
+  it("should identify unhealthy loan", async () => {
     const loan = {
       collateralAmount: 105_000000000000000000n, // 105 stRWA
-      outstandingDebt: 100_000000n,              // 100 USDC
+      outstandingDebt: 100_000000n, // 100 USDC
       penalties: 0n,
     };
 
     const price = 1_000000n;
 
-    const health = await calculator.calculateHealth('GABC...', loan, price);
+    const health = await calculator.calculateHealth("GABC...", loan, price);
 
     expect(health.healthFactor).toBe(1.05); // 105 / 100 = 1.05
     expect(health.isHealthy).toBe(false);
     expect(health.needsLiquidation).toBe(true);
   });
 
-  it('should include penalties in health calculation', async () => {
+  it("should include penalties in health calculation", async () => {
     const loan = {
       collateralAmount: 200_000000000000000000n,
       outstandingDebt: 100_000000n,
@@ -1490,13 +1498,13 @@ describe('HealthCalculator', () => {
 
     const price = 1_000000n;
 
-    const health = await calculator.calculateHealth('GABC...', loan, price);
+    const health = await calculator.calculateHealth("GABC...", loan, price);
 
     // Health = 200 / (100 + 50) = 1.33
     expect(health.healthFactor).toBeCloseTo(1.33, 2);
   });
 
-  it('should handle zero debt', async () => {
+  it("should handle zero debt", async () => {
     const loan = {
       collateralAmount: 200_000000000000000000n,
       outstandingDebt: 0n,
@@ -1505,7 +1513,7 @@ describe('HealthCalculator', () => {
 
     const price = 1_000000n;
 
-    const health = await calculator.calculateHealth('GABC...', loan, price);
+    const health = await calculator.calculateHealth("GABC...", loan, price);
 
     expect(health.healthFactor).toBe(Infinity);
     expect(health.isHealthy).toBe(true);
@@ -1514,16 +1522,17 @@ describe('HealthCalculator', () => {
 ```
 
 **2. Warning Manager Tests**
+
 ```typescript
 // tests/unit/warning.test.ts
-describe('WarningManager', () => {
+describe("WarningManager", () => {
   let manager: WarningManager;
 
   beforeEach(() => {
     manager = new WarningManager();
   });
 
-  it('should determine warning state based on health', () => {
+  it("should determine warning state based on health", () => {
     const health = { healthFactor: 1.4 };
     const loan = { warningsIssued: 0 };
     const currentTime = Date.now() / 1000;
@@ -1533,7 +1542,7 @@ describe('WarningManager', () => {
     expect(state).toBe(WarningState.WARNING_1);
   });
 
-  it('should determine liquidatable state', () => {
+  it("should determine liquidatable state", () => {
     const health = { healthFactor: 1.09 };
     const loan = { warningsIssued: 3 };
     const currentTime = Date.now() / 1000;
@@ -1543,7 +1552,7 @@ describe('WarningManager', () => {
     expect(state).toBe(WarningState.LIQUIDATABLE);
   });
 
-  it('should issue warning when needed', () => {
+  it("should issue warning when needed", () => {
     const state = WarningState.WARNING_1;
     const loan = {
       warningsIssued: 0,
@@ -1556,7 +1565,7 @@ describe('WarningManager', () => {
     expect(should).toBe(true);
   });
 
-  it('should not issue duplicate warnings', () => {
+  it("should not issue duplicate warnings", () => {
     const state = WarningState.WARNING_1;
     const loan = {
       warningsIssued: 1,
@@ -1572,16 +1581,17 @@ describe('WarningManager', () => {
 ```
 
 **3. Economics Calculator Tests**
+
 ```typescript
 // tests/unit/economics.test.ts
-describe('EconomicsCalculator', () => {
+describe("EconomicsCalculator", () => {
   let calculator: EconomicsCalculator;
 
   beforeEach(() => {
     calculator = new EconomicsCalculator();
   });
 
-  it('should calculate liquidation reward', async () => {
+  it("should calculate liquidation reward", async () => {
     const health = {
       collateralValue: 100_000000n, // 100 USDC collateral value
     };
@@ -1591,7 +1601,7 @@ describe('EconomicsCalculator', () => {
     expect(economics.liquidatorReward).toBe(10_000000n); // 10% = 10 USDC
   });
 
-  it('should identify profitable liquidation', async () => {
+  it("should identify profitable liquidation", async () => {
     const health = {
       collateralValue: 100_000000n, // Reward: 10 USDC
     };
@@ -1602,7 +1612,7 @@ describe('EconomicsCalculator', () => {
     expect(economics.isProfitable).toBe(true);
   });
 
-  it('should identify unprofitable liquidation', async () => {
+  it("should identify unprofitable liquidation", async () => {
     const health = {
       collateralValue: 10_000000n, // Reward: 1 USDC
     };
@@ -1619,8 +1629,8 @@ describe('EconomicsCalculator', () => {
 
 ```typescript
 // tests/integration/end-to-end.test.ts
-describe('Liquidation Bot E2E', () => {
-  it('should issue warning for unhealthy loan', async () => {
+describe("Liquidation Bot E2E", () => {
+  it("should issue warning for unhealthy loan", async () => {
     // 1. Setup: Create loan with health = 1.4
     const borrower = await setupUnhealthyLoan(1.4);
 
@@ -1635,7 +1645,7 @@ describe('Liquidation Bot E2E', () => {
     expect(loan.penalties).toBeGreaterThan(0);
   });
 
-  it('should liquidate loan at threshold', async () => {
+  it("should liquidate loan at threshold", async () => {
     // 1. Setup: Create loan with health = 1.05
     const borrower = await setupLiquidatableLoan();
 
@@ -1692,15 +1702,15 @@ PORT=3002
 
 ```typescript
 // src/admin/api.ts
-import express from 'express';
+import express from "express";
 
 const app = express();
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', bot: 'liquidation' });
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", bot: "liquidation" });
 });
 
-app.get('/metrics', (req, res) => {
+app.get("/metrics", (req, res) => {
   const metrics = bot.getMetrics();
   res.json({
     ...metrics,
@@ -1710,20 +1720,20 @@ app.get('/metrics', (req, res) => {
   });
 });
 
-app.get('/loan/:borrower/health', async (req, res) => {
+app.get("/loan/:borrower/health", async (req, res) => {
   const { borrower } = req.params;
 
   try {
     const loan = await bot.lendingPool.getLoan(borrower);
     if (!loan) {
-      return res.status(404).json({ error: 'Loan not found' });
+      return res.status(404).json({ error: "Loan not found" });
     }
 
     const [price] = await bot.oracle.getPrice(bot.config.stRwaTokenAddress);
     const health = await bot.healthCalculator.calculateHealth(
       borrower,
       loan,
-      price
+      price,
     );
 
     res.json(health);
@@ -1732,7 +1742,7 @@ app.get('/loan/:borrower/health', async (req, res) => {
   }
 });
 
-app.post('/admin/force-check/:borrower', async (req, res) => {
+app.post("/admin/force-check/:borrower", async (req, res) => {
   const { borrower } = req.params;
 
   try {
@@ -1745,7 +1755,7 @@ app.post('/admin/force-check/:borrower', async (req, res) => {
 });
 
 app.listen(3002, () => {
-  console.log('Liquidation Admin API on port 3002');
+  console.log("Liquidation Admin API on port 3002");
 });
 ```
 
@@ -1756,6 +1766,7 @@ app.listen(3002, () => {
 **Challenge**: stRWA has 18 decimals, USDC has 6 decimals
 
 **Solution**:
+
 ```typescript
 // Always normalize to same decimals for calculations
 const collateralValue = (collateralAmount * price) / 10n ** 18n;
@@ -1768,11 +1779,12 @@ const collateralValue = (collateralAmount * price) / 10n ** 18n;
 **Critical**: Never use stale prices for liquidations
 
 **Check**:
+
 ```typescript
 const MAX_PRICE_AGE = 24 * 3600; // 24 hours
 
 if (currentTime - priceTimestamp > MAX_PRICE_AGE) {
-  throw new Error('Oracle price too old');
+  throw new Error("Oracle price too old");
 }
 ```
 
@@ -1781,6 +1793,7 @@ if (currentTime - priceTimestamp > MAX_PRICE_AGE) {
 **Issue**: Liquidation transactions could be front-run
 
 **Mitigation**:
+
 - Submit transactions quickly after health check
 - Use higher gas fees for priority
 - Stellar's consensus makes this less of an issue than EVM chains
@@ -1788,6 +1801,7 @@ if (currentTime - priceTimestamp > MAX_PRICE_AGE) {
 ### 4. Gas Cost Management
 
 **Strategy**:
+
 ```typescript
 // Only liquidate if profitable
 const MIN_PROFIT = 1_000000n; // 1 USDC
@@ -1823,6 +1837,7 @@ The Liquidation Bot is a **critical risk management system** that:
 ✅ **Tracks** comprehensive metrics
 
 **Key Features**:
+
 - Real-time health monitoring
 - 3-warning progressive system
 - Economic viability checks

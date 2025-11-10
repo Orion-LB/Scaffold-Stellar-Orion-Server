@@ -10,11 +10,17 @@ default = true
 
 [development.contracts]
 usdc_mock = { client = true, constructor_args = "--admin me --initial_supply 1000000000000000" }
-mock_rwa_token = { client = true, constructor_args = "--admin me --manager me --initial_supply 1000000000000000000" }
-strwa_token = { client = true, constructor_args = "--admin me" }
-rwa_vault = { client = true, constructor_args = "--admin me --rwa_token mock_rwa_token --strwa_token strwa_token" }
+rwa_invoices = { client = true, constructor_args = "--admin me --manager me --initial_supply 1000000000000000000" }
+rwa_tbills = { client = true, constructor_args = "--admin me --manager me --initial_supply 1000000000000000000" }
+rwa_realestate = { client = true, constructor_args = "--admin me --manager me --initial_supply 1000000000000000000" }
+strwa_invoices = { client = true, constructor_args = "--admin me" }
+strwa_tbills = { client = true, constructor_args = "--admin me" }
+strwa_realestate = { client = true, constructor_args = "--admin me" }
+vault_invoices = { client = true, constructor_args = "--admin me --rwa_token rwa_invoices --strwa_token strwa_invoices" }
+vault_tbills = { client = true, constructor_args = "--admin me --rwa_token rwa_tbills --strwa_token strwa_tbills" }
+vault_realestate = { client = true, constructor_args = "--admin me --rwa_token rwa_realestate --strwa_token strwa_realestate" }
 mock_oracle = { client = true, constructor_args = "--bot_address me" }
-lending_pool = { client = true, constructor_args = "--admin me --oracle mock_oracle --vault rwa_vault --usdc usdc_mock" }
+lending_pool = { client = true, constructor_args = "--admin me --oracle mock_oracle --usdc usdc_mock" }
 
 ### Testnet environment configuration
 [testnet.network]
@@ -27,11 +33,17 @@ default = true
 
 [testnet.contracts]
 usdc_mock = { client = true }
-mock_rwa_token = { client = true }
-strwa_token = { client = true }
-rwa_vault = { client = true }
-mock_oracle = { client = true }
+rwa_invoices = { client = true }
+rwa_tbills = { client = true }
+rwa_realestate = { client = true }
+strwa_invoices = { client = true }
+strwa_tbills = { client = true }
+strwa_realestate = { client = true }
+vault_invoices = { client = true }
+vault_tbills = { client = true }
+vault_realestate = { client = true }
 lending_pool = { client = true }
+mock_oracle = { client = true }
 
 ### Production environment configuration
 [production.network]

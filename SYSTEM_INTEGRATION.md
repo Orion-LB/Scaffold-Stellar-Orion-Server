@@ -3,6 +3,7 @@
 ## Overview
 
 This document describes the complete integration architecture connecting all components of the Orion RWA Lending Protocol:
+
 - **Smart Contracts** (Soroban/Rust)
 - **Backend Bots** (TypeScript/Node.js)
 - **Frontend** (React/TypeScript)
@@ -66,6 +67,7 @@ This document describes the complete integration architecture connecting all com
 #### Contract Addresses Configuration
 
 **File**: `contracts/deployed-addresses.json`
+
 ```json
 {
   "network": "testnet",
@@ -149,9 +151,10 @@ env.events().publish((
 #### Shared Configuration
 
 **File**: `bots/shared/config.ts`
+
 ```typescript
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from "fs";
+import { join } from "path";
 
 export interface DeployedContracts {
   network: string;
@@ -174,9 +177,9 @@ export class SharedConfig {
     // Load from deployed-addresses.json
     const contractsPath = join(
       __dirname,
-      '../../../contracts/deployed-addresses.json'
+      "../../../contracts/deployed-addresses.json",
     );
-    this.contracts = JSON.parse(readFileSync(contractsPath, 'utf-8'));
+    this.contracts = JSON.parse(readFileSync(contractsPath, "utf-8"));
   }
 
   static getInstance(): SharedConfig {
@@ -186,7 +189,7 @@ export class SharedConfig {
     return SharedConfig.instance;
   }
 
-  getContractId(contractName: keyof DeployedContracts['contracts']): string {
+  getContractId(contractName: keyof DeployedContracts["contracts"]): string {
     return this.contracts.contracts[contractName];
   }
 
@@ -203,21 +206,19 @@ export class SharedConfig {
 #### Shared Borrower Registry
 
 **File**: `bots/shared/borrowers.json`
+
 ```json
 {
-  "borrowers": [
-    "GABC123...",
-    "GDEF456...",
-    "GHIJ789..."
-  ],
+  "borrowers": ["GABC123...", "GDEF456...", "GHIJ789..."],
   "last_updated": "2025-01-09T12:00:00Z"
 }
 ```
 
 **File**: `bots/shared/borrower-registry.ts`
+
 ```typescript
-import { readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, writeFileSync } from "fs";
+import { join } from "path";
 
 export interface BorrowerRegistryData {
   borrowers: string[];
@@ -225,7 +226,7 @@ export interface BorrowerRegistryData {
 }
 
 export class BorrowerRegistry {
-  private static REGISTRY_PATH = join(__dirname, './borrowers.json');
+  private static REGISTRY_PATH = join(__dirname, "./borrowers.json");
   private data: BorrowerRegistryData;
 
   constructor() {
@@ -235,7 +236,7 @@ export class BorrowerRegistry {
   load(): void {
     try {
       this.data = JSON.parse(
-        readFileSync(BorrowerRegistry.REGISTRY_PATH, 'utf-8')
+        readFileSync(BorrowerRegistry.REGISTRY_PATH, "utf-8"),
       );
     } catch (error) {
       // Initialize empty registry
@@ -251,7 +252,7 @@ export class BorrowerRegistry {
     this.data.last_updated = new Date().toISOString();
     writeFileSync(
       BorrowerRegistry.REGISTRY_PATH,
-      JSON.stringify(this.data, null, 2)
+      JSON.stringify(this.data, null, 2),
     );
   }
 
@@ -263,7 +264,7 @@ export class BorrowerRegistry {
   }
 
   removeBorrower(address: string): void {
-    this.data.borrowers = this.data.borrowers.filter(b => b !== address);
+    this.data.borrowers = this.data.borrowers.filter((b) => b !== address);
     this.save();
   }
 
@@ -280,11 +281,12 @@ export class BorrowerRegistry {
 #### Bot Orchestrator
 
 **File**: `bots/orchestrator/index.ts`
+
 ```typescript
-import { OraclePriceBot } from '../oracle-price-bot/src/bot';
-import { AutoRepayBot } from '../auto-repay-bot/src/bot';
-import { LiquidationBot } from '../liquidation-bot/src/bot';
-import { SharedConfig } from '../shared/config';
+import { OraclePriceBot } from "../oracle-price-bot/src/bot";
+import { AutoRepayBot } from "../auto-repay-bot/src/bot";
+import { LiquidationBot } from "../liquidation-bot/src/bot";
+import { SharedConfig } from "../shared/config";
 
 export class BotOrchestrator {
   private oracleBot: OraclePriceBot;
@@ -298,8 +300,8 @@ export class BotOrchestrator {
       network: config.contracts.network,
       rpcUrl: config.getRpcUrl(),
       networkPassphrase: config.getNetworkPassphrase(),
-      oracleContractId: config.getContractId('oracle'),
-      stRwaTokenAddress: config.getContractId('strwa_token'),
+      oracleContractId: config.getContractId("oracle"),
+      stRwaTokenAddress: config.getContractId("strwa_token"),
       botSecretKey: process.env.ORACLE_BOT_SECRET_KEY!,
     });
 
@@ -307,8 +309,8 @@ export class BotOrchestrator {
       network: config.contracts.network,
       rpcUrl: config.getRpcUrl(),
       networkPassphrase: config.getNetworkPassphrase(),
-      vaultContractId: config.getContractId('rwa_vault'),
-      lendingPoolContractId: config.getContractId('lending_pool'),
+      vaultContractId: config.getContractId("rwa_vault"),
+      lendingPoolContractId: config.getContractId("lending_pool"),
       botSecretKey: process.env.AUTO_REPAY_BOT_SECRET_KEY!,
     });
 
@@ -316,50 +318,50 @@ export class BotOrchestrator {
       network: config.contracts.network,
       rpcUrl: config.getRpcUrl(),
       networkPassphrase: config.getNetworkPassphrase(),
-      lendingPoolContractId: config.getContractId('lending_pool'),
-      oracleContractId: config.getContractId('oracle'),
-      stRwaTokenAddress: config.getContractId('strwa_token'),
+      lendingPoolContractId: config.getContractId("lending_pool"),
+      oracleContractId: config.getContractId("oracle"),
+      stRwaTokenAddress: config.getContractId("strwa_token"),
       botSecretKey: process.env.LIQUIDATION_BOT_SECRET_KEY!,
     });
   }
 
   async startAll(): Promise<void> {
-    console.log('🚀 Starting all bots...\n');
+    console.log("🚀 Starting all bots...\n");
 
     // Start Oracle Bot first (other bots depend on prices)
     await this.oracleBot.start();
-    console.log('✅ Oracle Price Bot started\n');
+    console.log("✅ Oracle Price Bot started\n");
 
     // Wait 10 seconds for first price update
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    await new Promise((resolve) => setTimeout(resolve, 10000));
 
     // Start Auto-Repay Bot
     await this.autoRepayBot.start();
-    console.log('✅ Auto-Repay Bot started\n');
+    console.log("✅ Auto-Repay Bot started\n");
 
     // Start Liquidation Bot
     await this.liquidationBot.start();
-    console.log('✅ Liquidation Bot started\n');
+    console.log("✅ Liquidation Bot started\n");
 
-    console.log('🎉 All bots running successfully!\n');
-    console.log('Admin APIs:');
-    console.log('  - Auto-Repay:   http://localhost:3001');
-    console.log('  - Liquidation:  http://localhost:3002');
+    console.log("🎉 All bots running successfully!\n");
+    console.log("Admin APIs:");
+    console.log("  - Auto-Repay:   http://localhost:3001");
+    console.log("  - Liquidation:  http://localhost:3002");
   }
 
   async stopAll(): Promise<void> {
-    console.log('🛑 Stopping all bots...\n');
+    console.log("🛑 Stopping all bots...\n");
 
     await this.liquidationBot.stop();
-    console.log('✅ Liquidation Bot stopped\n');
+    console.log("✅ Liquidation Bot stopped\n");
 
     await this.autoRepayBot.stop();
-    console.log('✅ Auto-Repay Bot stopped\n');
+    console.log("✅ Auto-Repay Bot stopped\n");
 
     await this.oracleBot.stop();
-    console.log('✅ Oracle Price Bot stopped\n');
+    console.log("✅ Oracle Price Bot stopped\n");
 
-    console.log('👋 All bots stopped');
+    console.log("👋 All bots stopped");
   }
 
   getMetrics(): object {
@@ -375,20 +377,20 @@ export class BotOrchestrator {
 if (require.main === module) {
   const orchestrator = new BotOrchestrator();
 
-  orchestrator.startAll().catch(error => {
-    console.error('Failed to start bots:', error);
+  orchestrator.startAll().catch((error) => {
+    console.error("Failed to start bots:", error);
     process.exit(1);
   });
 
   // Graceful shutdown
-  process.on('SIGINT', async () => {
-    console.log('\n\nReceived SIGINT, shutting down gracefully...\n');
+  process.on("SIGINT", async () => {
+    console.log("\n\nReceived SIGINT, shutting down gracefully...\n");
     await orchestrator.stopAll();
     process.exit(0);
   });
 
-  process.on('SIGTERM', async () => {
-    console.log('\n\nReceived SIGTERM, shutting down gracefully...\n');
+  process.on("SIGTERM", async () => {
+    console.log("\n\nReceived SIGTERM, shutting down gracefully...\n");
     await orchestrator.stopAll();
     process.exit(0);
   });
@@ -400,42 +402,41 @@ if (require.main === module) {
 #### Contract Client SDK
 
 **File**: `frontend/src/lib/stellar/contracts.ts`
+
 ```typescript
-import * as StellarSdk from '@stellar/stellar-sdk';
-import deployedAddresses from '../../../../contracts/deployed-addresses.json';
+import * as StellarSdk from "@stellar/stellar-sdk";
+import deployedAddresses from "../../../../contracts/deployed-addresses.json";
 
 export class ContractClients {
   private server: StellarSdk.SorobanRpc.Server;
   private networkPassphrase: string;
 
   constructor() {
-    this.server = new StellarSdk.SorobanRpc.Server(
-      deployedAddresses.rpc_url
-    );
+    this.server = new StellarSdk.SorobanRpc.Server(deployedAddresses.rpc_url);
     this.networkPassphrase = deployedAddresses.network_passphrase;
   }
 
   // RWA Vault Client
   async vaultDeposit(
     userKeypair: StellarSdk.Keypair,
-    amount: bigint
+    amount: bigint,
   ): Promise<string> {
     const contract = new StellarSdk.Contract(
-      deployedAddresses.contracts.rwa_vault
+      deployedAddresses.contracts.rwa_vault,
     );
 
     const account = await this.server.getAccount(userKeypair.publicKey());
 
     const args = [
-      StellarSdk.nativeToScVal(userKeypair.publicKey(), { type: 'address' }),
-      StellarSdk.nativeToScVal(amount, { type: 'i128' }),
+      StellarSdk.nativeToScVal(userKeypair.publicKey(), { type: "address" }),
+      StellarSdk.nativeToScVal(amount, { type: "i128" }),
     ];
 
     let transaction = new StellarSdk.TransactionBuilder(account, {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.networkPassphrase,
     })
-      .addOperation(contract.call('deposit', ...args))
+      .addOperation(contract.call("deposit", ...args))
       .setTimeout(30)
       .build();
 
@@ -443,13 +444,13 @@ export class ContractClients {
     const simulated = await this.server.simulateTransaction(transaction);
 
     if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
-      throw new Error('Simulation failed');
+      throw new Error("Simulation failed");
     }
 
     // Assemble
     transaction = StellarSdk.SorobanRpc.assembleTransaction(
       transaction,
-      simulated
+      simulated,
     ).build();
 
     // Sign
@@ -463,36 +464,36 @@ export class ContractClients {
 
   async vaultWithdraw(
     userKeypair: StellarSdk.Keypair,
-    amount: bigint
+    amount: bigint,
   ): Promise<string> {
     const contract = new StellarSdk.Contract(
-      deployedAddresses.contracts.rwa_vault
+      deployedAddresses.contracts.rwa_vault,
     );
 
     const account = await this.server.getAccount(userKeypair.publicKey());
 
     const args = [
-      StellarSdk.nativeToScVal(userKeypair.publicKey(), { type: 'address' }),
-      StellarSdk.nativeToScVal(amount, { type: 'i128' }),
+      StellarSdk.nativeToScVal(userKeypair.publicKey(), { type: "address" }),
+      StellarSdk.nativeToScVal(amount, { type: "i128" }),
     ];
 
     let transaction = new StellarSdk.TransactionBuilder(account, {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.networkPassphrase,
     })
-      .addOperation(contract.call('withdraw', ...args))
+      .addOperation(contract.call("withdraw", ...args))
       .setTimeout(30)
       .build();
 
     const simulated = await this.server.simulateTransaction(transaction);
 
     if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
-      throw new Error('Simulation failed');
+      throw new Error("Simulation failed");
     }
 
     transaction = StellarSdk.SorobanRpc.assembleTransaction(
       transaction,
-      simulated
+      simulated,
     ).build();
 
     transaction.sign(userKeypair);
@@ -504,27 +505,25 @@ export class ContractClients {
 
   async vaultGetBalance(userAddress: string): Promise<bigint> {
     const contract = new StellarSdk.Contract(
-      deployedAddresses.contracts.rwa_vault
+      deployedAddresses.contracts.rwa_vault,
     );
 
     const account = await this.server.getAccount(userAddress);
 
-    const args = [
-      StellarSdk.nativeToScVal(userAddress, { type: 'address' }),
-    ];
+    const args = [StellarSdk.nativeToScVal(userAddress, { type: "address" })];
 
     const transaction = new StellarSdk.TransactionBuilder(account, {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.networkPassphrase,
     })
-      .addOperation(contract.call('get_balance', ...args))
+      .addOperation(contract.call("get_balance", ...args))
       .setTimeout(30)
       .build();
 
     const simulated = await this.server.simulateTransaction(transaction);
 
     if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
-      throw new Error('Failed to get balance');
+      throw new Error("Failed to get balance");
     }
 
     // Parse result
@@ -536,37 +535,37 @@ export class ContractClients {
   async lendingPoolBorrow(
     userKeypair: StellarSdk.Keypair,
     collateralAmount: bigint,
-    borrowAmount: bigint
+    borrowAmount: bigint,
   ): Promise<string> {
     const contract = new StellarSdk.Contract(
-      deployedAddresses.contracts.lending_pool
+      deployedAddresses.contracts.lending_pool,
     );
 
     const account = await this.server.getAccount(userKeypair.publicKey());
 
     const args = [
-      StellarSdk.nativeToScVal(userKeypair.publicKey(), { type: 'address' }),
-      StellarSdk.nativeToScVal(collateralAmount, { type: 'i128' }),
-      StellarSdk.nativeToScVal(borrowAmount, { type: 'i128' }),
+      StellarSdk.nativeToScVal(userKeypair.publicKey(), { type: "address" }),
+      StellarSdk.nativeToScVal(collateralAmount, { type: "i128" }),
+      StellarSdk.nativeToScVal(borrowAmount, { type: "i128" }),
     ];
 
     let transaction = new StellarSdk.TransactionBuilder(account, {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.networkPassphrase,
     })
-      .addOperation(contract.call('borrow', ...args))
+      .addOperation(contract.call("borrow", ...args))
       .setTimeout(30)
       .build();
 
     const simulated = await this.server.simulateTransaction(transaction);
 
     if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
-      throw new Error('Simulation failed');
+      throw new Error("Simulation failed");
     }
 
     transaction = StellarSdk.SorobanRpc.assembleTransaction(
       transaction,
-      simulated
+      simulated,
     ).build();
 
     transaction.sign(userKeypair);
@@ -578,36 +577,36 @@ export class ContractClients {
 
   async lendingPoolRepay(
     userKeypair: StellarSdk.Keypair,
-    repayAmount: bigint
+    repayAmount: bigint,
   ): Promise<string> {
     const contract = new StellarSdk.Contract(
-      deployedAddresses.contracts.lending_pool
+      deployedAddresses.contracts.lending_pool,
     );
 
     const account = await this.server.getAccount(userKeypair.publicKey());
 
     const args = [
-      StellarSdk.nativeToScVal(userKeypair.publicKey(), { type: 'address' }),
-      StellarSdk.nativeToScVal(repayAmount, { type: 'i128' }),
+      StellarSdk.nativeToScVal(userKeypair.publicKey(), { type: "address" }),
+      StellarSdk.nativeToScVal(repayAmount, { type: "i128" }),
     ];
 
     let transaction = new StellarSdk.TransactionBuilder(account, {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.networkPassphrase,
     })
-      .addOperation(contract.call('repay_loan', ...args))
+      .addOperation(contract.call("repay_loan", ...args))
       .setTimeout(30)
       .build();
 
     const simulated = await this.server.simulateTransaction(transaction);
 
     if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
-      throw new Error('Simulation failed');
+      throw new Error("Simulation failed");
     }
 
     transaction = StellarSdk.SorobanRpc.assembleTransaction(
       transaction,
-      simulated
+      simulated,
     ).build();
 
     transaction.sign(userKeypair);
@@ -619,20 +618,20 @@ export class ContractClients {
 
   async lendingPoolGetLoan(borrowerAddress: string): Promise<any> {
     const contract = new StellarSdk.Contract(
-      deployedAddresses.contracts.lending_pool
+      deployedAddresses.contracts.lending_pool,
     );
 
     const account = await this.server.getAccount(borrowerAddress);
 
     const args = [
-      StellarSdk.nativeToScVal(borrowerAddress, { type: 'address' }),
+      StellarSdk.nativeToScVal(borrowerAddress, { type: "address" }),
     ];
 
     const transaction = new StellarSdk.TransactionBuilder(account, {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.networkPassphrase,
     })
-      .addOperation(contract.call('get_loan', ...args))
+      .addOperation(contract.call("get_loan", ...args))
       .setTimeout(30)
       .build();
 
@@ -649,28 +648,26 @@ export class ContractClients {
   // Oracle Client
   async oracleGetPrice(tokenAddress: string): Promise<[bigint, number]> {
     const contract = new StellarSdk.Contract(
-      deployedAddresses.contracts.oracle
+      deployedAddresses.contracts.oracle,
     );
 
     // Use any account for read-only operations
     const account = await this.server.getAccount(tokenAddress);
 
-    const args = [
-      StellarSdk.nativeToScVal(tokenAddress, { type: 'address' }),
-    ];
+    const args = [StellarSdk.nativeToScVal(tokenAddress, { type: "address" })];
 
     const transaction = new StellarSdk.TransactionBuilder(account, {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.networkPassphrase,
     })
-      .addOperation(contract.call('get_price', ...args))
+      .addOperation(contract.call("get_price", ...args))
       .setTimeout(30)
       .build();
 
     const simulated = await this.server.simulateTransaction(transaction);
 
     if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simulated)) {
-      throw new Error('Failed to get price');
+      throw new Error("Failed to get price");
     }
 
     const result = StellarSdk.scValToNative(simulated.result!.retval);
@@ -682,9 +679,10 @@ export class ContractClients {
 #### Real-time Updates with Event Polling
 
 **File**: `frontend/src/lib/stellar/event-listener.ts`
+
 ```typescript
-import * as StellarSdk from '@stellar/stellar-sdk';
-import deployedAddresses from '../../../../contracts/deployed-addresses.json';
+import * as StellarSdk from "@stellar/stellar-sdk";
+import deployedAddresses from "../../../../contracts/deployed-addresses.json";
 
 export type EventCallback = (event: any) => void;
 
@@ -694,15 +692,13 @@ export class EventListener {
   private lastLedger: number = 0;
 
   constructor() {
-    this.server = new StellarSdk.SorobanRpc.Server(
-      deployedAddresses.rpc_url
-    );
+    this.server = new StellarSdk.SorobanRpc.Server(deployedAddresses.rpc_url);
   }
 
   async start(
     contractId: string,
     eventTypes: string[],
-    callback: EventCallback
+    callback: EventCallback,
   ): Promise<void> {
     // Get current ledger
     const latestLedger = await this.server.getLatestLedger();
@@ -717,7 +713,7 @@ export class EventListener {
   private async pollEvents(
     contractId: string,
     eventTypes: string[],
-    callback: EventCallback
+    callback: EventCallback,
   ): Promise<void> {
     try {
       const latestLedger = await this.server.getLatestLedger();
@@ -731,7 +727,7 @@ export class EventListener {
       const events = await this.server.getEvents({
         filters: [
           {
-            type: 'contract',
+            type: "contract",
             contractIds: [contractId],
           },
         ],
@@ -750,7 +746,7 @@ export class EventListener {
 
       this.lastLedger = currentLedger;
     } catch (error) {
-      console.error('Failed to poll events:', error);
+      console.error("Failed to poll events:", error);
     }
   }
 
@@ -779,6 +775,7 @@ export class EventListener {
 #### Health Factor Display Component
 
 **File**: `frontend/src/components/HealthFactorDisplay.tsx`
+
 ```typescript
 import React, { useEffect, useState } from 'react';
 import { ContractClients } from '../lib/stellar/contracts';
@@ -1002,6 +999,7 @@ export const HealthFactorDisplay: React.FC<HealthFactorProps> = ({
 ### Root Configuration File
 
 **File**: `.env.example`
+
 ```bash
 # Network Configuration
 STELLAR_NETWORK=testnet
@@ -1025,6 +1023,7 @@ METRICS_PORT=9090
 ## Deployment Checklist
 
 ### 1. Deploy Contracts
+
 ```bash
 cd contracts
 # Deploy all contracts
@@ -1034,6 +1033,7 @@ cd contracts
 ```
 
 ### 2. Start Backend Bots
+
 ```bash
 cd bots
 
@@ -1050,6 +1050,7 @@ npm run start:all
 ```
 
 ### 3. Start Frontend
+
 ```bash
 cd frontend
 
@@ -1068,45 +1069,47 @@ npm run dev
 ### Unified Metrics Endpoint
 
 **File**: `bots/orchestrator/metrics-api.ts`
+
 ```typescript
-import express from 'express';
-import { BotOrchestrator } from './index';
+import express from "express";
+import { BotOrchestrator } from "./index";
 
 const app = express();
 const orchestrator = new BotOrchestrator();
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', bots: 'orchestrator' });
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", bots: "orchestrator" });
 });
 
-app.get('/metrics/all', (req, res) => {
+app.get("/metrics/all", (req, res) => {
   const metrics = orchestrator.getMetrics();
   res.json(metrics);
 });
 
-app.get('/metrics/oracle', (req, res) => {
+app.get("/metrics/oracle", (req, res) => {
   const metrics = orchestrator.getMetrics();
   res.json(metrics.oracle);
 });
 
-app.get('/metrics/auto-repay', (req, res) => {
+app.get("/metrics/auto-repay", (req, res) => {
   const metrics = orchestrator.getMetrics();
   res.json(metrics.autoRepay);
 });
 
-app.get('/metrics/liquidation', (req, res) => {
+app.get("/metrics/liquidation", (req, res) => {
   const metrics = orchestrator.getMetrics();
   res.json(metrics.liquidation);
 });
 
 app.listen(9090, () => {
-  console.log('📊 Metrics API running on port 9090');
+  console.log("📊 Metrics API running on port 9090");
 });
 ```
 
 ### Frontend Monitoring Dashboard
 
 **File**: `frontend/src/pages/AdminDashboard.tsx`
+
 ```typescript
 import React, { useEffect, useState } from 'react';
 
@@ -1175,6 +1178,7 @@ This integration architecture ensures:
 ✅ **Hackathon Ready** - Simple, working integration
 
 **Key Integration Points**:
+
 1. Contract addresses centralized in `deployed-addresses.json`
 2. Borrower registry shared between Auto-Repay and Liquidation bots
 3. Frontend uses event polling for real-time updates

@@ -54,6 +54,7 @@ The Auto-Repay Bot automatically routes accumulated yield from the RWA Vault to 
 **Feature**: Listen for `YieldFunded` events from the Vault contract
 
 **Event Structure**:
+
 ```rust
 // In Vault contract
 pub enum VaultEvent {
@@ -65,6 +66,7 @@ pub enum VaultEvent {
 ```
 
 **Implementation**:
+
 ```typescript
 interface YieldFundedEvent {
   totalYield: bigint;
@@ -80,14 +82,15 @@ class EventMonitor {
     const events: YieldFundedEvent[] = [];
 
     // Poll from last processed to latest
-    for (let ledger = this.lastProcessedLedger + 1;
-         ledger <= latestLedger.sequence;
-         ledger++) {
-
+    for (
+      let ledger = this.lastProcessedLedger + 1;
+      ledger <= latestLedger.sequence;
+      ledger++
+    ) {
       const ledgerEvents = await this.getEventsAtLedger(ledger);
 
       for (const event of ledgerEvents) {
-        if (event.topic === 'YieldFunded') {
+        if (event.topic === "YieldFunded") {
           events.push({
             totalYield: this.parseYield(event),
             timestamp: ledgerEvents.timestamp,
@@ -108,7 +111,7 @@ class EventMonitor {
       endLedger: ledger,
       filters: [
         {
-          type: 'contract',
+          type: "contract",
           contractIds: [this.vaultContractId],
         },
       ],
@@ -128,13 +131,14 @@ class EventMonitor {
 **Solutions**:
 
 **Option A: Event-Based Tracking** (Recommended for hackathon)
+
 ```typescript
 class BorrowerTracker {
   private borrowers: Set<string> = new Set();
 
   // Track from loan origination events
   async trackFromEvents(): Promise<void> {
-    const events = await this.getContractEvents('loan_originated');
+    const events = await this.getContractEvents("loan_originated");
 
     for (const event of events) {
       const borrower = event.data.borrower;
@@ -160,9 +164,10 @@ class BorrowerTracker {
 ```
 
 **Option B: Off-Chain Indexer** (Production approach)
+
 ```typescript
 // Use Stellar event streaming service
-import { StellarEventStream } from '@stellar/event-stream';
+import { StellarEventStream } from "@stellar/event-stream";
 
 class BorrowerIndexer {
   private db: Database; // SQLite or similar
@@ -170,19 +175,19 @@ class BorrowerIndexer {
   async indexBorrowers(): Promise<void> {
     const stream = new StellarEventStream({
       contractId: this.lendingPoolId,
-      network: 'testnet',
+      network: "testnet",
     });
 
-    stream.on('loan_originated', (event) => {
-      this.db.insert('borrowers', {
+    stream.on("loan_originated", (event) => {
+      this.db.insert("borrowers", {
         address: event.borrower,
         loanAmount: event.loanAmount,
         timestamp: event.timestamp,
       });
     });
 
-    stream.on('loan_closed', (event) => {
-      this.db.update('borrowers', {
+    stream.on("loan_closed", (event) => {
+      this.db.update("borrowers", {
         address: event.borrower,
         active: false,
       });
@@ -190,14 +195,13 @@ class BorrowerIndexer {
   }
 
   async getActiveBorrowers(): Promise<string[]> {
-    return this.db.query(
-      'SELECT address FROM borrowers WHERE active = true'
-    );
+    return this.db.query("SELECT address FROM borrowers WHERE active = true");
   }
 }
 ```
 
 **Option C: Maintained List** (Simplest for hackathon)
+
 ```typescript
 // Maintain a simple JSON file of known borrowers
 class BorrowerRegistry {
@@ -205,17 +209,15 @@ class BorrowerRegistry {
 
   constructor() {
     // Load from file
-    this.borrowers = JSON.parse(
-      fs.readFileSync('borrowers.json', 'utf-8')
-    );
+    this.borrowers = JSON.parse(fs.readFileSync("borrowers.json", "utf-8"));
   }
 
   async addBorrower(address: string): Promise<void> {
     if (!this.borrowers.includes(address)) {
       this.borrowers.push(address);
       fs.writeFileSync(
-        'borrowers.json',
-        JSON.stringify(this.borrowers, null, 2)
+        "borrowers.json",
+        JSON.stringify(this.borrowers, null, 2),
       );
     }
   }
@@ -231,11 +233,13 @@ class BorrowerRegistry {
 **Feature**: Determine which borrowers are eligible for auto-repay
 
 **Criteria**:
+
 1. ✅ Has an active loan (outstanding debt > 0)
 2. ✅ Has claimable yield (yield > minimum threshold)
 3. ✅ Auto-repay is enabled (if we add this feature)
 
 **Implementation**:
+
 ```typescript
 interface BorrowerEligibility {
   address: string;
@@ -247,9 +251,7 @@ interface BorrowerEligibility {
 }
 
 class EligibilityChecker {
-  async checkBorrower(
-    borrower: string
-  ): Promise<BorrowerEligibility> {
+  async checkBorrower(borrower: string): Promise<BorrowerEligibility> {
     // 1. Get loan info
     const loan = await this.lendingPool.getLoan(borrower);
 
@@ -282,9 +284,8 @@ class EligibilityChecker {
     }
 
     // 4. Calculate repayment amount
-    const repaymentAmount = yield < loan.outstandingDebt
-      ? yield
-      : loan.outstandingDebt;
+    const repaymentAmount =
+      yield < loan.outstandingDebt ? yield : loan.outstandingDebt;
 
     return {
       address: borrower,
@@ -296,14 +297,12 @@ class EligibilityChecker {
     };
   }
 
-  async checkAllBorrowers(
-    borrowers: string[]
-  ): Promise<BorrowerEligibility[]> {
+  async checkAllBorrowers(borrowers: string[]): Promise<BorrowerEligibility[]> {
     const eligibilities = await Promise.all(
-      borrowers.map(b => this.checkBorrower(b))
+      borrowers.map((b) => this.checkBorrower(b)),
     );
 
-    return eligibilities.filter(e => e.isEligible);
+    return eligibilities.filter((e) => e.isEligible);
   }
 }
 ```
@@ -313,6 +312,7 @@ class EligibilityChecker {
 **Feature**: Execute auto-repay transactions for eligible borrowers
 
 **Contract Interaction**:
+
 ```rust
 // In Lending Pool contract
 pub fn repay_loan(
@@ -328,21 +328,19 @@ pub fn repay_loan(
 ```
 
 **Implementation**:
+
 ```typescript
 class RepaymentExecutor {
   private server: StellarSdk.SorobanRpc.Server;
   private keypair: StellarSdk.Keypair;
 
-  async executeRepayment(
-    borrower: string,
-    amount: bigint
-  ): Promise<string> {
+  async executeRepayment(borrower: string, amount: bigint): Promise<string> {
     const botAddress = this.keypair.publicKey();
 
     // Build transaction
     const args = [
-      StellarSdk.nativeToScVal(borrower, { type: 'address' }),
-      StellarSdk.nativeToScVal(amount, { type: 'i128' }),
+      StellarSdk.nativeToScVal(borrower, { type: "address" }),
+      StellarSdk.nativeToScVal(amount, { type: "i128" }),
     ];
 
     const account = await this.server.getAccount(botAddress);
@@ -352,7 +350,7 @@ class RepaymentExecutor {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.networkPassphrase,
     })
-      .addOperation(contract.call('repay_loan', ...args))
+      .addOperation(contract.call("repay_loan", ...args))
       .setTimeout(30)
       .build();
 
@@ -366,7 +364,7 @@ class RepaymentExecutor {
     // Assemble with auth
     transaction = StellarSdk.SorobanRpc.assembleTransaction(
       transaction,
-      simulated
+      simulated,
     ).build();
 
     // Sign
@@ -379,13 +377,13 @@ class RepaymentExecutor {
     let result = await this.server.getTransaction(response.hash);
     let attempts = 0;
 
-    while (result.status === 'NOT_FOUND' && attempts < 20) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    while (result.status === "NOT_FOUND" && attempts < 20) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       result = await this.server.getTransaction(response.hash);
       attempts++;
     }
 
-    if (result.status !== 'SUCCESS') {
+    if (result.status !== "SUCCESS") {
       throw new Error(`Transaction failed: ${result.status}`);
     }
 
@@ -401,27 +399,32 @@ class RepaymentExecutor {
 **Challenge**: Stellar has transaction size limits
 
 **Strategy**:
+
 ```typescript
 interface BatchConfig {
-  maxBatchSize: number;       // Max operations per TX
-  maxGasPerTx: number;         // Gas limit per TX
+  maxBatchSize: number; // Max operations per TX
+  maxGasPerTx: number; // Gas limit per TX
   delayBetweenBatches: number; // ms between batches
 }
 
 class BatchProcessor {
   private config: BatchConfig = {
-    maxBatchSize: 5,           // Conservative for hackathon
+    maxBatchSize: 5, // Conservative for hackathon
     maxGasPerTx: 100_000_000,
     delayBetweenBatches: 2000,
   };
 
   async processBatch(
-    eligibleBorrowers: BorrowerEligibility[]
+    eligibleBorrowers: BorrowerEligibility[],
   ): Promise<BatchResult[]> {
     const results: BatchResult[] = [];
 
     // Split into batches
-    for (let i = 0; i < eligibleBorrowers.length; i += this.config.maxBatchSize) {
+    for (
+      let i = 0;
+      i < eligibleBorrowers.length;
+      i += this.config.maxBatchSize
+    ) {
       const batch = eligibleBorrowers.slice(i, i + this.config.maxBatchSize);
 
       try {
@@ -430,7 +433,7 @@ class BatchProcessor {
           try {
             const txHash = await this.executor.executeRepayment(
               borrower.address,
-              borrower.repaymentAmount
+              borrower.repaymentAmount,
             );
 
             results.push({
@@ -440,12 +443,11 @@ class BatchProcessor {
               txHash,
             });
 
-            this.logger.info('Auto-repay executed', {
+            this.logger.info("Auto-repay executed", {
               borrower: borrower.address,
               amount: borrower.repaymentAmount,
               txHash,
             });
-
           } catch (error: any) {
             results.push({
               borrower: borrower.address,
@@ -454,7 +456,7 @@ class BatchProcessor {
               error: error.message,
             });
 
-            this.logger.error('Auto-repay failed', {
+            this.logger.error("Auto-repay failed", {
               borrower: borrower.address,
               error: error.message,
             });
@@ -463,13 +465,12 @@ class BatchProcessor {
 
         // Delay between batches to avoid rate limiting
         if (i + this.config.maxBatchSize < eligibleBorrowers.length) {
-          await new Promise(resolve =>
-            setTimeout(resolve, this.config.delayBetweenBatches)
+          await new Promise((resolve) =>
+            setTimeout(resolve, this.config.delayBetweenBatches),
           );
         }
-
       } catch (error: any) {
-        this.logger.error('Batch processing failed', { error: error.message });
+        this.logger.error("Batch processing failed", { error: error.message });
       }
     }
 
@@ -485,6 +486,7 @@ class BatchProcessor {
 **Triggers**:
 
 **A. Event-Based** (Primary)
+
 ```typescript
 class EventBasedTrigger {
   async start(): Promise<void> {
@@ -493,7 +495,7 @@ class EventBasedTrigger {
       const events = await this.eventMonitor.pollEvents();
 
       if (events.length > 0) {
-        this.logger.info('Yield funded event detected', {
+        this.logger.info("Yield funded event detected", {
           events: events.length,
         });
 
@@ -505,36 +507,41 @@ class EventBasedTrigger {
 ```
 
 **B. Time-Based** (Fallback)
+
 ```typescript
 class TimeBasedTrigger {
   async start(): Promise<void> {
     // Run every 5 minutes as fallback
-    setInterval(async () => {
-      this.logger.info('Time-based trigger executing');
-      await this.processAutoRepays();
-    }, 5 * 60 * 1000); // 5 minutes
+    setInterval(
+      async () => {
+        this.logger.info("Time-based trigger executing");
+        await this.processAutoRepays();
+      },
+      5 * 60 * 1000,
+    ); // 5 minutes
   }
 }
 ```
 
 **C. Manual** (Admin override)
+
 ```typescript
 class ManualTrigger {
   async triggerForBorrower(borrower: string): Promise<void> {
-    this.logger.info('Manual trigger for borrower', { borrower });
+    this.logger.info("Manual trigger for borrower", { borrower });
 
     const eligibility = await this.checker.checkBorrower(borrower);
 
     if (eligibility.isEligible) {
       await this.executor.executeRepayment(
         borrower,
-        eligibility.repaymentAmount
+        eligibility.repaymentAmount,
       );
     }
   }
 
   async triggerForAll(): Promise<void> {
-    this.logger.info('Manual trigger for all borrowers');
+    this.logger.info("Manual trigger for all borrowers");
     await this.processAutoRepays();
   }
 }
@@ -545,24 +552,25 @@ class ManualTrigger {
 **Feature**: Robust error handling for various failure modes
 
 **Error Types**:
+
 ```typescript
 enum AutoRepayError {
-  INSUFFICIENT_YIELD = 'Insufficient yield to repay',
-  NO_LOAN = 'Borrower has no active loan',
-  SIMULATION_FAILED = 'Transaction simulation failed',
-  TRANSACTION_FAILED = 'Transaction execution failed',
-  NETWORK_ERROR = 'Network connection error',
-  CONTRACT_ERROR = 'Contract invocation error',
+  INSUFFICIENT_YIELD = "Insufficient yield to repay",
+  NO_LOAN = "Borrower has no active loan",
+  SIMULATION_FAILED = "Transaction simulation failed",
+  TRANSACTION_FAILED = "Transaction execution failed",
+  NETWORK_ERROR = "Network connection error",
+  CONTRACT_ERROR = "Contract invocation error",
 }
 
 class ErrorHandler {
   async handleError(
     error: any,
     borrower: string,
-    amount: bigint
+    amount: bigint,
   ): Promise<void> {
     // Log error
-    this.logger.error('Auto-repay error', {
+    this.logger.error("Auto-repay error", {
       borrower,
       amount,
       error: error.message,
@@ -584,7 +592,7 @@ class ErrorHandler {
     } else {
       // Alert admin
       this.alerts.send({
-        severity: 'critical',
+        severity: "critical",
         message: `Auto-repay failed for ${borrower}`,
         metadata: {
           borrower,
@@ -597,15 +605,13 @@ class ErrorHandler {
 
   private isRetryable(error: any): boolean {
     const retryableErrors = [
-      'Network request failed',
-      'timeout',
-      'ECONNRESET',
-      'Transaction simulation failed',
+      "Network request failed",
+      "timeout",
+      "ECONNRESET",
+      "Transaction simulation failed",
     ];
 
-    return retryableErrors.some(msg =>
-      error.message.includes(msg)
-    );
+    return retryableErrors.some((msg) => error.message.includes(msg));
   }
 }
 ```
@@ -615,6 +621,7 @@ class ErrorHandler {
 **Feature**: Track bot performance and health
 
 **Metrics**:
+
 ```typescript
 interface AutoRepayMetrics {
   // Processing stats
@@ -655,7 +662,7 @@ class MetricsCollector {
   recordRepayment(
     success: boolean,
     amount: bigint,
-    processingTime: number
+    processingTime: number,
   ): void {
     this.metrics.totalRepayments++;
 
@@ -666,15 +673,17 @@ class MetricsCollector {
 
       // Update average
       this.metrics.averageRepaymentAmount =
-        this.metrics.totalDebtRepaid / BigInt(this.metrics.successfulRepayments);
+        this.metrics.totalDebtRepaid /
+        BigInt(this.metrics.successfulRepayments);
     } else {
       this.metrics.failedRepayments++;
     }
 
     // Update processing time
     this.metrics.averageProcessingTime =
-      (this.metrics.averageProcessingTime * (this.metrics.totalRepayments - 1) + processingTime)
-      / this.metrics.totalRepayments;
+      (this.metrics.averageProcessingTime * (this.metrics.totalRepayments - 1) +
+        processingTime) /
+      this.metrics.totalRepayments;
   }
 
   getMetrics(): AutoRepayMetrics {
@@ -686,16 +695,21 @@ class MetricsCollector {
     const now = Date.now() / 1000;
     const staleness = now - this.metrics.lastProcessedTime;
 
-    if (staleness > 600) { // 10 minutes
+    if (staleness > 600) {
+      // 10 minutes
       console.warn(`⚠️ Auto-repay bot hasn't processed in ${staleness}s`);
     }
 
     // Check success rate
-    const successRate = this.metrics.successfulRepayments /
+    const successRate =
+      this.metrics.successfulRepayments /
       Math.max(this.metrics.totalRepayments, 1);
 
-    if (successRate < 0.9) { // 90% threshold
-      console.warn(`⚠️ Auto-repay success rate low: ${(successRate * 100).toFixed(1)}%`);
+    if (successRate < 0.9) {
+      // 90% threshold
+      console.warn(
+        `⚠️ Auto-repay success rate low: ${(successRate * 100).toFixed(1)}%`,
+      );
     }
   }
 }
@@ -749,14 +763,14 @@ bots/
 
 ```typescript
 // src/bot.ts
-import { Logger } from './monitoring/logger';
-import { MetricsCollector } from './monitoring/metrics';
-import { EventMonitor } from './monitor/events';
-import { BorrowerTracker } from './monitor/borrowers';
-import { EligibilityChecker } from './processor/eligibility';
-import { BatchProcessor } from './processor/batch';
-import { RepaymentExecutor } from './executor/transaction';
-import { NetworkConfig } from './config/network';
+import { Logger } from "./monitoring/logger";
+import { MetricsCollector } from "./monitoring/metrics";
+import { EventMonitor } from "./monitor/events";
+import { BorrowerTracker } from "./monitor/borrowers";
+import { EligibilityChecker } from "./processor/eligibility";
+import { BatchProcessor } from "./processor/batch";
+import { RepaymentExecutor } from "./executor/transaction";
+import { NetworkConfig } from "./config/network";
 
 export class AutoRepayBot {
   private logger: Logger;
@@ -768,7 +782,7 @@ export class AutoRepayBot {
   private executor: RepaymentExecutor;
 
   constructor(private config: NetworkConfig) {
-    this.logger = new Logger('AutoRepayBot');
+    this.logger = new Logger("AutoRepayBot");
     this.metrics = new MetricsCollector();
     this.eventMonitor = new EventMonitor(config);
     this.borrowerTracker = new BorrowerTracker(config);
@@ -778,7 +792,7 @@ export class AutoRepayBot {
   }
 
   async start(): Promise<void> {
-    this.logger.info('Starting Auto-Repay Bot...');
+    this.logger.info("Starting Auto-Repay Bot...");
 
     // Load known borrowers
     await this.borrowerTracker.loadBorrowers();
@@ -792,7 +806,7 @@ export class AutoRepayBot {
     // Start health monitoring
     this.startHealthMonitoring();
 
-    this.logger.info('Auto-Repay Bot started successfully');
+    this.logger.info("Auto-Repay Bot started successfully");
   }
 
   private startEventMonitoring(): void {
@@ -801,14 +815,14 @@ export class AutoRepayBot {
         const events = await this.eventMonitor.pollEvents();
 
         if (events.length > 0) {
-          this.logger.info('Yield funded events detected', {
+          this.logger.info("Yield funded events detected", {
             count: events.length,
           });
 
           await this.processAutoRepays();
         }
       } catch (error: any) {
-        this.logger.error('Event monitoring failed', {
+        this.logger.error("Event monitoring failed", {
           error: error.message,
         });
       }
@@ -816,10 +830,13 @@ export class AutoRepayBot {
   }
 
   private startTimedProcessing(): void {
-    setInterval(async () => {
-      this.logger.info('Timed processing trigger');
-      await this.processAutoRepays();
-    }, 5 * 60 * 1000); // 5 minutes
+    setInterval(
+      async () => {
+        this.logger.info("Timed processing trigger");
+        await this.processAutoRepays();
+      },
+      5 * 60 * 1000,
+    ); // 5 minutes
   }
 
   private async processAutoRepays(): Promise<void> {
@@ -828,16 +845,15 @@ export class AutoRepayBot {
     try {
       // 1. Get all known borrowers
       const borrowers = this.borrowerTracker.getBorrowers();
-      this.logger.info('Processing auto-repays', {
+      this.logger.info("Processing auto-repays", {
         borrowers: borrowers.length,
       });
 
       // 2. Check eligibility
-      const eligible = await this.eligibilityChecker.checkAllBorrowers(
-        borrowers
-      );
+      const eligible =
+        await this.eligibilityChecker.checkAllBorrowers(borrowers);
 
-      this.logger.info('Eligible borrowers found', {
+      this.logger.info("Eligible borrowers found", {
         eligible: eligible.length,
       });
 
@@ -857,21 +873,20 @@ export class AutoRepayBot {
         this.metrics.recordRepayment(
           result.success,
           result.amount,
-          processingTime
+          processingTime,
         );
       }
 
       // 5. Log summary
-      const successful = results.filter(r => r.success).length;
-      this.logger.info('Auto-repay batch completed', {
+      const successful = results.filter((r) => r.success).length;
+      this.logger.info("Auto-repay batch completed", {
         total: results.length,
         successful,
         failed: results.length - successful,
         processingTime,
       });
-
     } catch (error: any) {
-      this.logger.error('Auto-repay processing failed', {
+      this.logger.error("Auto-repay processing failed", {
         error: error.message,
       });
     }
@@ -884,9 +899,9 @@ export class AutoRepayBot {
   }
 
   async stop(): Promise<void> {
-    this.logger.info('Stopping Auto-Repay Bot...');
+    this.logger.info("Stopping Auto-Repay Bot...");
     // Cleanup intervals (store references for cleanup)
-    this.logger.info('Auto-Repay Bot stopped');
+    this.logger.info("Auto-Repay Bot stopped");
   }
 }
 ```
@@ -896,10 +911,11 @@ export class AutoRepayBot {
 ### Unit Tests
 
 **1. Eligibility Checker Tests**
+
 ```typescript
 // tests/unit/eligibility.test.ts
-describe('EligibilityChecker', () => {
-  it('should identify eligible borrower', async () => {
+describe("EligibilityChecker", () => {
+  it("should identify eligible borrower", async () => {
     // Mock borrower with loan and yield
     const mockLoan = {
       outstandingDebt: 100_000000n, // 100 USDC
@@ -909,29 +925,28 @@ describe('EligibilityChecker', () => {
     const checker = new EligibilityChecker(mockConfig);
 
     // Mock contract calls
-    jest.spyOn(checker['lendingPool'], 'getLoan')
-      .mockResolvedValue(mockLoan);
-    jest.spyOn(checker['vault'], 'getClaimableYield')
+    jest.spyOn(checker["lendingPool"], "getLoan").mockResolvedValue(mockLoan);
+    jest
+      .spyOn(checker["vault"], "getClaimableYield")
       .mockResolvedValue(mockYield);
 
-    const result = await checker.checkBorrower('GABC...');
+    const result = await checker.checkBorrower("GABC...");
 
     expect(result.isEligible).toBe(true);
     expect(result.repaymentAmount).toBe(50_000000n);
   });
 
-  it('should reject borrower with no loan', async () => {
+  it("should reject borrower with no loan", async () => {
     const checker = new EligibilityChecker(mockConfig);
 
-    jest.spyOn(checker['lendingPool'], 'getLoan')
-      .mockResolvedValue(null);
+    jest.spyOn(checker["lendingPool"], "getLoan").mockResolvedValue(null);
 
-    const result = await checker.checkBorrower('GABC...');
+    const result = await checker.checkBorrower("GABC...");
 
     expect(result.isEligible).toBe(false);
   });
 
-  it('should reject borrower with insufficient yield', async () => {
+  it("should reject borrower with insufficient yield", async () => {
     const mockLoan = {
       outstandingDebt: 100_000000n,
     };
@@ -939,17 +954,17 @@ describe('EligibilityChecker', () => {
 
     const checker = new EligibilityChecker(mockConfig);
 
-    jest.spyOn(checker['lendingPool'], 'getLoan')
-      .mockResolvedValue(mockLoan);
-    jest.spyOn(checker['vault'], 'getClaimableYield')
+    jest.spyOn(checker["lendingPool"], "getLoan").mockResolvedValue(mockLoan);
+    jest
+      .spyOn(checker["vault"], "getClaimableYield")
       .mockResolvedValue(mockYield);
 
-    const result = await checker.checkBorrower('GABC...');
+    const result = await checker.checkBorrower("GABC...");
 
     expect(result.isEligible).toBe(false);
   });
 
-  it('should cap repayment at outstanding debt', async () => {
+  it("should cap repayment at outstanding debt", async () => {
     const mockLoan = {
       outstandingDebt: 50_000000n, // 50 USDC debt
     };
@@ -957,12 +972,12 @@ describe('EligibilityChecker', () => {
 
     const checker = new EligibilityChecker(mockConfig);
 
-    jest.spyOn(checker['lendingPool'], 'getLoan')
-      .mockResolvedValue(mockLoan);
-    jest.spyOn(checker['vault'], 'getClaimableYield')
+    jest.spyOn(checker["lendingPool"], "getLoan").mockResolvedValue(mockLoan);
+    jest
+      .spyOn(checker["vault"], "getClaimableYield")
       .mockResolvedValue(mockYield);
 
-    const result = await checker.checkBorrower('GABC...');
+    const result = await checker.checkBorrower("GABC...");
 
     expect(result.isEligible).toBe(true);
     expect(result.repaymentAmount).toBe(50_000000n); // Capped at debt
@@ -971,18 +986,19 @@ describe('EligibilityChecker', () => {
 ```
 
 **2. Batch Processor Tests**
+
 ```typescript
 // tests/unit/batch.test.ts
-describe('BatchProcessor', () => {
-  it('should process batch successfully', async () => {
+describe("BatchProcessor", () => {
+  it("should process batch successfully", async () => {
     const eligible = [
       {
-        address: 'GABC1...',
+        address: "GABC1...",
         repaymentAmount: 50_000000n,
         isEligible: true,
       },
       {
-        address: 'GABC2...',
+        address: "GABC2...",
         repaymentAmount: 30_000000n,
         isEligible: true,
       },
@@ -992,15 +1008,15 @@ describe('BatchProcessor', () => {
     const results = await processor.processBatch(eligible);
 
     expect(results.length).toBe(2);
-    expect(results.every(r => r.success)).toBe(true);
+    expect(results.every((r) => r.success)).toBe(true);
   });
 
-  it('should handle partial failures', async () => {
+  it("should handle partial failures", async () => {
     // Mock one success, one failure
     const results = await processor.processBatch(eligible);
 
-    const successful = results.filter(r => r.success);
-    const failed = results.filter(r => !r.success);
+    const successful = results.filter((r) => r.success);
+    const failed = results.filter((r) => !r.success);
 
     expect(successful.length).toBe(1);
     expect(failed.length).toBe(1);
@@ -1012,8 +1028,8 @@ describe('BatchProcessor', () => {
 
 ```typescript
 // tests/integration/end-to-end.test.ts
-describe('Auto-Repay Bot E2E', () => {
-  it('should process auto-repay from yield funded to completion', async () => {
+describe("Auto-Repay Bot E2E", () => {
+  it("should process auto-repay from yield funded to completion", async () => {
     // 1. Setup: Create borrower with loan and yield
     const borrower = await setupBorrowerWithLoanAndYield();
 
@@ -1063,20 +1079,20 @@ PORT=3001
 
 ```typescript
 // src/admin/api.ts
-import express from 'express';
+import express from "express";
 
 const app = express();
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', bot: 'auto-repay' });
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", bot: "auto-repay" });
 });
 
-app.get('/metrics', (req, res) => {
+app.get("/metrics", (req, res) => {
   const metrics = bot.getMetrics();
   res.json(metrics);
 });
 
-app.post('/admin/trigger', async (req, res) => {
+app.post("/admin/trigger", async (req, res) => {
   try {
     await bot.processAutoRepays();
     res.json({ success: true });
@@ -1085,7 +1101,7 @@ app.post('/admin/trigger', async (req, res) => {
   }
 });
 
-app.post('/admin/trigger/:borrower', async (req, res) => {
+app.post("/admin/trigger/:borrower", async (req, res) => {
   const { borrower } = req.params;
 
   try {
@@ -1097,7 +1113,7 @@ app.post('/admin/trigger/:borrower', async (req, res) => {
 });
 
 app.listen(3001, () => {
-  console.log('Auto-Repay Admin API on port 3001');
+  console.log("Auto-Repay Admin API on port 3001");
 });
 ```
 
@@ -1108,6 +1124,7 @@ app.listen(3001, () => {
 **Important**: The bot needs authorization to call `repay_loan` on behalf of borrowers.
 
 **Solution**: The `repay_loan` function in the Lending Pool contract should allow:
+
 ```rust
 // Allow bot to trigger repayment (bot pays gas, not borrower)
 pub fn repay_loan(
@@ -1133,6 +1150,7 @@ pub fn repay_loan(
 **Challenge**: Each repayment costs gas
 
 **Optimizations**:
+
 - Skip borrowers with yield < minimum threshold
 - Batch processing with delays
 - Use simulation to estimate gas before submission
@@ -1140,17 +1158,18 @@ pub fn repay_loan(
 
 ### 3. Borrower Discovery Trade-offs
 
-| Approach | Pros | Cons | Best For |
-|----------|------|------|----------|
-| Event tracking | Simple, no external deps | May miss historical borrowers | Hackathon |
-| Off-chain indexer | Complete data, fast queries | Requires infrastructure | Production |
-| Maintained list | Very simple | Manual updates needed | MVP/Testing |
+| Approach          | Pros                        | Cons                          | Best For    |
+| ----------------- | --------------------------- | ----------------------------- | ----------- |
+| Event tracking    | Simple, no external deps    | May miss historical borrowers | Hackathon   |
+| Off-chain indexer | Complete data, fast queries | Requires infrastructure       | Production  |
+| Maintained list   | Very simple                 | Manual updates needed         | MVP/Testing |
 
 ### 4. Yield Timing
 
 **Issue**: Yield may be funded in batches (weekly, monthly)
 
 **Solution**: Bot should handle:
+
 - Large batches of eligible borrowers at once
 - Repeated processing if yield > all debts
 - Cooldown periods between runs
@@ -1166,6 +1185,7 @@ The Auto-Repay Bot is a **background automation service** that:
 ✅ **Tracks** metrics and health
 
 **Key Features**:
+
 - Event-driven + time-based triggers
 - Eligibility filtering
 - Batch processing

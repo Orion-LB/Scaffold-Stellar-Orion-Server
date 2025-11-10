@@ -20,6 +20,7 @@ Orion Protocol enables permissioned Real-World Asset (RWA) tokens to interact wi
 ### Our Solution
 
 **Two-Layer Architecture:**
+
 1. **Vault Layer**: RWA → stRWA (composable receipt tokens)
 2. **Lending Layer**: Borrow USDC against stRWA + auto-repay from yield
 
@@ -43,18 +44,21 @@ Orion Protocol enables permissioned Real-World Asset (RWA) tokens to interact wi
 ## 🚀 Quick Start
 
 ### Deploy Contracts
+
 ```bash
 cd contracts && cargo build --release
 stellar contract deploy --wasm target/.../rwa_vault.wasm --network testnet
 ```
 
 ### Start Bots
+
 ```bash
 cd bots/orchestrator
 npm install && npm run build && npm start
 ```
 
 ### Launch Frontend
+
 ```bash
 cd frontend
 npm install && npm run dev
@@ -130,4 +134,4 @@ Contract addresses auto-loaded from `contracts/deployed-addresses.json`
 
 **Built for Stellar Soroban Hackathon** 🚀
 
-*Making institutional RWAs composable in DeFi*
+_Making institutional RWAs composable in DeFi_
